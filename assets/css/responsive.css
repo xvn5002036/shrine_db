@@ -1,0 +1,276 @@
+/* 平板裝置 (最大寬度: 992px) */
+@media screen and (max-width: 992px) {
+    .container {
+        max-width: 960px;
+    }
+
+    /* 頁首調整 */
+    .header-main .container {
+        padding: 0 20px;
+    }
+
+    .header-search {
+        flex: 0 0 250px;
+    }
+
+    /* 導航選單調整 */
+    .nav-menu > li > a {
+        padding: 15px 15px;
+        font-size: 15px;
+    }
+
+    .dropdown-menu {
+        min-width: 180px;
+    }
+
+    /* 頁尾調整 */
+    .footer-sections {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px;
+    }
+
+    /* 內容區域調整 */
+    .intro-content {
+        flex-direction: column;
+    }
+
+    .temple-image {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    /* 網格系統調整 */
+    .grid-4 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* 手機裝置 (最大寬度: 768px) */
+@media screen and (max-width: 768px) {
+    .container {
+        max-width: 720px;
+    }
+
+    /* 頁首調整 */
+    .header-top .container {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .contact-info span {
+        display: block;
+        margin: 5px 0;
+    }
+
+    .header-main .container {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .logo {
+        flex: 0 0 100%;
+        text-align: center;
+    }
+
+    .header-search {
+        flex: 1;
+        order: 3;
+    }
+
+    .header-actions {
+        flex: 1;
+        justify-content: flex-end;
+    }
+
+    /* 導航選單調整 */
+    .menu-toggle {
+        display: block;
+    }
+
+    .nav-menu {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 80%;
+        height: 100vh;
+        background-color: #34495e;
+        flex-direction: column;
+        padding: 20px 0;
+        transition: left 0.3s ease;
+        z-index: 1000;
+    }
+
+    .nav-menu.active {
+        left: 0;
+        display: flex;
+    }
+
+    .nav-menu > li {
+        width: 100%;
+    }
+
+    .nav-menu > li > a {
+        padding: 15px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .dropdown-menu {
+        position: static;
+        width: 100%;
+        box-shadow: none;
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 0;
+    }
+
+    .dropdown-menu li a {
+        color: #fff;
+        padding: 12px 30px;
+    }
+
+    .mobile-menu-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .mobile-menu-overlay.active {
+        display: block;
+    }
+
+    /* 內容區域調整 */
+    .news-list {
+        grid-template-columns: 1fr;
+    }
+
+    /* 網格系統調整 */
+    .grid-3, .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* 小型手機裝置 (最大寬度: 576px) */
+@media screen and (max-width: 576px) {
+    .container {
+        max-width: 540px;
+    }
+
+    /* 頁首調整 */
+    .header-main .container {
+        flex-direction: column;
+    }
+
+    .header-search {
+        flex: 0 0 100%;
+        order: 2;
+        margin: 15px 0;
+    }
+
+    .header-actions {
+        flex: 0 0 100%;
+        order: 3;
+        justify-content: center;
+    }
+
+    /* 頁尾調整 */
+    .footer-sections {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .footer-bottom .container {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .footer-links a {
+        margin: 0;
+    }
+
+    /* 網格系統調整 */
+    .grid-2, .grid-3, .grid-4 {
+        grid-template-columns: 1fr;
+    }
+
+    /* 按鈕調整 */
+    .action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* 表單調整 */
+    .newsletter-form {
+        flex-direction: column;
+    }
+
+    .newsletter-form button {
+        width: 100%;
+    }
+}
+
+/* 列印樣式 */
+@media print {
+    .header-top,
+    .header-search,
+    .header-actions,
+    .main-nav,
+    .footer-top,
+    .back-to-top,
+    .newsletter,
+    .social-links {
+        display: none !important;
+    }
+
+    .container {
+        max-width: 100%;
+        padding: 0;
+    }
+
+    body {
+        font-size: 12pt;
+        line-height: 1.5;
+        background: none;
+        color: #000;
+    }
+
+    a {
+        text-decoration: none;
+        color: #000;
+    }
+
+    .logo img {
+        max-height: 50px;
+    }
+
+    .footer-bottom {
+        margin-top: 20px;
+        padding: 20px 0;
+        border-top: 1px solid #ddd;
+        background: none;
+        color: #000;
+    }
+
+    .card {
+        break-inside: avoid;
+        border: 1px solid #ddd;
+        box-shadow: none;
+    }
+} 
+
+
+
+

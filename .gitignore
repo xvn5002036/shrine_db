@@ -1,0 +1,41 @@
+# 系統安裝鎖定檔
+config/installed.php
+
+# 設定檔（可選）
+# config/config.php
+# config/database.php
+
+# 上傳檔案目錄
+uploads/*
+!uploads/.gitkeep
+
+# 備份檔案目錄
+backups/*
+!backups/.gitkeep
+
+# 報表檔案目錄
+reports/*
+!reports/.gitkeep
+
+# 快取目錄
+cache/*
+!cache/.gitkeep
+
+# 暫存檔案
+*.log
+*.cache
+*.tmp
+
+# IDE 和編輯器檔案
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 作業系統檔案
+.DS_Store
+Thumbs.db
+
+# 相依套件目錄
+/vendor/
+/node_modules/ 
