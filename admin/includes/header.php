@@ -19,9 +19,9 @@ $admin_name = $_SESSION['admin_name'] ?? '管理員';
             <span class="welcome-text">歡迎，</span>
             <span class="user-name"><?php echo htmlspecialchars($admin_name); ?></span>
             <a href="/admin/logout.php" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i>
-                登出
-            </a>
+                    <i class="fas fa-sign-out-alt"></i>
+                    登出
+                </a>
         </div>
     </div>
 </header>

@@ -1,11 +1,13 @@
 <?php
 require_once 'config/config.php';
-require_once 'config/database.php';
 require_once 'includes/functions.php';
 
 // 設定輸出編碼
 header('Content-Type: text/html; charset=utf-8');
 mb_internal_encoding('UTF-8');
+
+// 獲取全域 PDO 實例
+$pdo = $GLOBALS['pdo'];
 
 // 處理分頁
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -18,7 +20,12 @@ $event_type = isset($_GET['type']) ? $_GET['type'] : '';
 // 如果有指定 ID，顯示單一活動
 if (isset($_GET['id'])) {
     $event_id = (int)$_GET['id'];
-    $stmt = $db->prepare("SELECT * FROM events WHERE id = ? AND status = 'published'");
+    $stmt = $pdo->prepare("
+        SELECT e.*, t.name as type_name 
+        FROM events e 
+        LEFT JOIN event_types t ON e.event_type_id = t.id 
+        WHERE e.id = ? AND e.status = 'published'
+    ");
     $stmt->execute([$event_id]);
     $event = $stmt->fetch();
     
@@ -28,39 +35,66 @@ if (isset($_GET['id'])) {
     }
 } else {
     // 構建查詢條件
-    $where_clause = "WHERE status = 'published'";
+    $where_clause = "WHERE e.status = 'published'";
     $params = [];
     
     if ($event_type) {
-        $where_clause .= " AND event_type = :event_type";
-        $params[':event_type'] = $event_type;
+        $where_clause .= " AND t.name = :type_name";
+        $params[':type_name'] = $event_type;
     }
     
     // 只顯示未結束的活動
-    $where_clause .= " AND end_date >= CURRENT_DATE()";
+    $where_clause .= " AND e.event_date >= CURRENT_DATE()";
     
     // 獲取總數用於分頁
-    $stmt = $db->prepare("SELECT COUNT(*) FROM events " . $where_clause);
-    if ($event_type) {
-        $stmt->bindParam(':event_type', $event_type);
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM events e 
+        LEFT JOIN event_types t ON e.event_type_id = t.id 
+        " . $where_clause
+    );
+    
+    if (!empty($params)) {
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
     }
+    
     $stmt->execute();
     $total = $stmt->fetchColumn();
     $total_pages = ceil($total / $limit);
     
     // 獲取活動列表
-    $stmt = $db->prepare("SELECT * FROM events {$where_clause} ORDER BY start_date ASC LIMIT :limit OFFSET :offset");
-    if ($event_type) {
-        $stmt->bindParam(':event_type', $event_type);
+    $sql = "
+        SELECT e.*, t.name as type_name
+        FROM events e 
+        LEFT JOIN event_types t ON e.event_type_id = t.id 
+        {$where_clause} 
+        ORDER BY e.event_date ASC 
+        LIMIT :offset, :limit
+    ";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    
+    if (!empty($params)) {
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
     }
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+    
     $stmt->execute();
     $events_list = $stmt->fetchAll();
 }
 
 // 獲取活動類型列表
-$stmt = $db->query("SELECT DISTINCT et.name as event_type FROM events e JOIN event_types et ON e.type_id = et.id WHERE e.status = 'published'");
+$stmt = $pdo->query("
+    SELECT DISTINCT et.name as event_type 
+    FROM events e 
+    JOIN event_types et ON e.event_type_id = et.id 
+    WHERE e.status = 'published'
+");
 $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <!DOCTYPE html>
@@ -78,7 +112,6 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
 <body>
 <?php include 'templates/header.php'; ?>
 
-
     <main class="container">
         <?php if (isset($event)): ?>
             <!-- 單一活動內容 -->
@@ -88,23 +121,29 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     <div class="event-meta">
                         <span class="date">
                             <i class="fas fa-calendar"></i> 
-                            <?php 
-                            $start_date = date('Y/m/d', strtotime($event['start_date']));
-                            $end_date = date('Y/m/d', strtotime($event['end_date']));
-                            echo $start_date . ($start_date != $end_date ? ' ~ ' . $end_date : '');
-                            ?>
+                            <?php echo date('Y/m/d', strtotime($event['event_date'])); ?>
                         </span>
-                        <span class="time"><i class="fas fa-clock"></i> <?php echo htmlspecialchars($event['time']); ?></span>
-                        <span class="location"><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($event['location']); ?></span>
-                        <?php if ($event['event_type']): ?>
-                            <span class="type"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($event['event_type']); ?></span>
+                        <span class="time">
+                            <i class="fas fa-clock"></i> 
+                            <?php echo date('H:i', strtotime($event['event_time'])); ?>
+                        </span>
+                        <span class="location">
+                            <i class="fas fa-map-marker-alt"></i> 
+                            <?php echo htmlspecialchars($event['location']); ?>
+                        </span>
+                        <?php if (!empty($event['type_name'])): ?>
+                            <span class="type">
+                                <i class="fas fa-tag"></i> 
+                                <?php echo htmlspecialchars($event['type_name']); ?>
+                            </span>
                         <?php endif; ?>
                     </div>
                 </header>
 
-                <?php if ($event['image_url']): ?>
+                <?php if ($event['image']): ?>
                     <div class="event-image">
-                        <img src="<?php echo htmlspecialchars($event['image_url']); ?>" alt="<?php echo htmlspecialchars($event['title']); ?>">
+                        <img src="<?php echo htmlspecialchars($event['image']); ?>" 
+                             alt="<?php echo htmlspecialchars($event['title']); ?>">
                     </div>
                 <?php endif; ?>
 
@@ -112,11 +151,18 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     <?php echo nl2br(htmlspecialchars($event['description'])); ?>
                 </div>
 
-                <?php if ($event['registration_url']): ?>
+                <?php if ($event['max_participants'] > 0): ?>
                     <div class="event-registration">
-                        <a href="<?php echo htmlspecialchars($event['registration_url']); ?>" class="btn btn-primary" target="_blank">
-                            <i class="fas fa-sign-in-alt"></i> 立即報名
-                        </a>
+                        <p class="participants-info">
+                            目前報名人數：<?php echo $event['current_participants']; ?> / <?php echo $event['max_participants']; ?>
+                        </p>
+                        <?php if ($event['current_participants'] < $event['max_participants']): ?>
+                            <a href="event_registration.php?id=<?php echo $event['id']; ?>" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt"></i> 立即報名
+                            </a>
+                        <?php else: ?>
+                            <p class="registration-closed">報名已額滿</p>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
 
@@ -149,10 +195,10 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
                 <?php else: ?>
                     <?php foreach ($events_list as $item): ?>
                         <article class="event-item">
-                            <?php if ($item['image_url']): ?>
+                            <?php if ($item['image']): ?>
                                 <div class="event-image">
                                     <a href="events.php?id=<?php echo $item['id']; ?>">
-                                        <img src="<?php echo htmlspecialchars($item['image_url']); ?>" 
+                                        <img src="<?php echo htmlspecialchars($item['image']); ?>" 
                                              alt="<?php echo htmlspecialchars($item['title']); ?>">
                                     </a>
                                 </div>
@@ -166,20 +212,22 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                 <div class="event-meta">
                                     <span class="date">
                                         <i class="fas fa-calendar"></i> 
-                                        <?php 
-                                        $start_date = date('Y/m/d', strtotime($item['start_date']));
-                                        $end_date = date('Y/m/d', strtotime($item['end_date']));
-                                        echo $start_date . ($start_date != $end_date ? ' ~ ' . $end_date : '');
-                                        ?>
+                                        <?php echo date('Y/m/d', strtotime($item['event_date'])); ?>
                                     </span>
                                     <span class="time">
                                         <i class="fas fa-clock"></i> 
-                                        <?php echo htmlspecialchars($item['time']); ?>
+                                        <?php echo date('H:i', strtotime($item['event_time'])); ?>
                                     </span>
                                     <span class="location">
                                         <i class="fas fa-map-marker-alt"></i> 
                                         <?php echo htmlspecialchars($item['location']); ?>
                                     </span>
+                                    <?php if ($item['max_participants'] > 0): ?>
+                                        <span class="participants">
+                                            <i class="fas fa-users"></i>
+                                            <?php echo $item['current_participants']; ?> / <?php echo $item['max_participants']; ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="event-excerpt">
                                     <?php 
@@ -191,9 +239,8 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                     <a href="events.php?id=<?php echo $item['id']; ?>" class="btn btn-secondary">
                                         活動詳情 <i class="fas fa-arrow-right"></i>
                                     </a>
-                                    <?php if ($item['registration_url']): ?>
-                                        <a href="<?php echo htmlspecialchars($item['registration_url']); ?>" 
-                                           class="btn btn-primary" target="_blank">
+                                    <?php if ($item['max_participants'] > 0 && $item['current_participants'] < $item['max_participants']): ?>
+                                        <a href="event_registration.php?id=<?php echo $item['id']; ?>" class="btn btn-primary">
                                             立即報名 <i class="fas fa-sign-in-alt"></i>
                                         </a>
                                     <?php endif; ?>
@@ -211,17 +258,14 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
                             <i class="fas fa-chevron-left"></i> 上一頁
                         </a>
                     <?php endif; ?>
-                    
+
                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                        <?php if ($i == $page): ?>
-                            <span class="current"><?php echo $i; ?></span>
-                        <?php else: ?>
-                            <a href="?page=<?php echo $i; ?><?php echo $event_type ? '&type=' . urlencode($event_type) : ''; ?>">
-                                <?php echo $i; ?>
-                            </a>
-                        <?php endif; ?>
+                        <a href="?page=<?php echo $i; ?><?php echo $event_type ? '&type=' . urlencode($event_type) : ''; ?>" 
+                           class="<?php echo $i === $page ? 'active' : ''; ?>">
+                            <?php echo $i; ?>
+                        </a>
                     <?php endfor; ?>
-                    
+
                     <?php if ($page < $total_pages): ?>
                         <a href="?page=<?php echo $page + 1; ?><?php echo $event_type ? '&type=' . urlencode($event_type) : ''; ?>" class="next">
                             下一頁 <i class="fas fa-chevron-right"></i>
@@ -232,9 +276,7 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
         <?php endif; ?>
     </main>
 
-    <?php include 'templates/footer.php'; ?>
-
-    <!-- JavaScript -->
-    <script src="assets/js/main.js"></script>
+<?php include 'templates/footer.php'; ?>
+<script src="assets/js/main.js"></script>
 </body>
 </html>

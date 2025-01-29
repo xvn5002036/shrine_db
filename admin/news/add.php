@@ -10,7 +10,7 @@ $pdo = $GLOBALS['pdo'];
 
 // 獲取所有分類
 try {
-    $stmt = $pdo->query("SELECT * FROM news_categories WHERE status = 'active' ORDER BY sort_order");
+    $stmt = $pdo->query("SELECT * FROM news_categories ORDER BY sort_order");
     $categories = $stmt->fetchAll();
 } catch (PDOException $e) {
     error_log('Error fetching categories: ' . $e->getMessage());
