@@ -465,4 +465,16 @@ function set_flash_message($type, $message) {
 
 function display_flash_messages() {
     displayFlashMessages();
+}
+
+/**
+ * 將檔案大小轉換為易讀的格式
+ * @param int $bytes 檔案大小（位元組）
+ * @param int $decimals 小數點位數
+ * @return string 格式化後的檔案大小
+ */
+function formatFileSize($bytes, $decimals = 2) {
+    $size = array('B','KB','MB','GB','TB','PB','EB','ZB','YB');
+    $factor = floor((strlen($bytes) - 1) / 3);
+    return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . ' ' . @$size[$factor];
 } 

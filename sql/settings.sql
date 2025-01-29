@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS `settings` (
     `key` varchar(50) NOT NULL,
     `value` text,
     `type` varchar(20) DEFAULT 'text',
-    `group` varchar(50) DEFAULT 'general',
+    `setting_group` varchar(50) DEFAULT 'general',
     `label` varchar(100) NOT NULL,
     `description` text,
     `sort_order` int(11) DEFAULT 0,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 插入基本設定
-INSERT INTO `settings` (`key`, `value`, `type`, `group`, `label`, `description`, `sort_order`) VALUES
+INSERT INTO `settings` (`key`, `value`, `type`, `setting_group`, `label`, `description`, `sort_order`) VALUES
 ('site_name', '宮廟名稱', 'text', 'general', '網站名稱', '顯示在網站標題和其他地方的名稱', 1),
 ('site_description', '宮廟簡介', 'textarea', 'general', '網站描述', '簡短的網站描述，用於SEO和網站介紹', 2),
 ('site_keywords', '宮廟,祈福,點燈', 'text', 'general', '網站關鍵字', '用於SEO的關鍵字，以逗號分隔', 3),
@@ -27,4 +27,7 @@ INSERT INTO `settings` (`key`, `value`, `type`, `group`, `label`, `description`,
 ('business_hours', '週一至週日 09:00-17:00', 'text', 'general', '營業時間', '宮廟開放時間', 9),
 ('maintenance_mode', '0', 'boolean', 'system', '維護模式', '是否開啟網站維護模式', 10),
 ('theme', 'default', 'text', 'appearance', '網站主題', '目前使用的網站主題', 11),
-('footer_text', '© 2024 宮廟名稱 版權所有', 'text', 'general', '頁尾文字', '顯示在網站底部的版權文字', 12); 
+('footer_text', '© 2024 宮廟名稱 版權所有', 'text', 'general', '頁尾文字', '顯示在網站底部的版權文字', 12),
+('auto_backup_enabled', '1', 'boolean', 'system', '啟用自動備份', '是否啟用自動備份功能', 13),
+('auto_backup_time', '03:00', 'text', 'system', '自動備份時間', '每天執行自動備份的時間', 14),
+('auto_backup_keep_days', '30', 'number', 'system', '備份保留天數', '自動備份檔案保留的天數', 15);
