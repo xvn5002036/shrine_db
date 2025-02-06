@@ -3,356 +3,284 @@ require_once 'config/config.php';
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
-// 檢查並建立資料表
+// 設定錯誤報告
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// 設定輸出編碼
+header('Content-Type: text/html; charset=utf-8');
+mb_internal_encoding('UTF-8');
+
+// 檢查必要的目錄是否存在
+$upload_dir = 'uploads/gallery';
+if (!file_exists($upload_dir)) {
+    mkdir($upload_dir, 0777, true);
+}
+
+// 使用全域PDO實例
+$pdo = $GLOBALS['pdo'];
+
 try {
-    // 建立相簿分類表
-    $pdo->exec("CREATE TABLE IF NOT EXISTS gallery_categories (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        description TEXT,
-        status TINYINT(1) DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-    
-    // 檢查是否已有分類資料
+    // 檢查並創建相簿資料表
+    // 先關閉外鍵檢查
+    $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+
+    // 刪除舊的表格（如果存在）
+    $pdo->exec("DROP TABLE IF EXISTS `gallery_images`");
+    $pdo->exec("DROP TABLE IF EXISTS `gallery_categories`");
+
+    // 創建分類表
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `gallery_categories` (
+            `id` INT PRIMARY KEY AUTO_INCREMENT,
+            `name` VARCHAR(50) NOT NULL,
+            `description` TEXT,
+            `status` TINYINT(1) DEFAULT 1,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    // 創建圖片表
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `gallery_images` (
+            `id` INT PRIMARY KEY AUTO_INCREMENT,
+            `category_id` INT,
+            `title` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `image_path` VARCHAR(255) NOT NULL,
+            `thumbnail_path` VARCHAR(255),
+            `status` TINYINT(1) DEFAULT 1,
+            `view_count` INT DEFAULT 0,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (category_id) REFERENCES gallery_categories(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    // 重新開啟外鍵檢查
+    $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+
+    // 檢查是否需要插入預設分類
     $stmt = $pdo->query("SELECT COUNT(*) FROM gallery_categories");
     if ($stmt->fetchColumn() == 0) {
-        // 插入預設相簿分類
-        $pdo->exec("INSERT INTO gallery_categories (name, description, status) VALUES
-            ('法會活動', '各式法會活動花絮', 1),
-            ('節慶慶典', '重要節慶與慶典紀錄', 1),
-            ('建築風貌', '宮廟建築與環境', 1),
-            ('文化展演', '文化活動與展覽', 1)");
+        $pdo->exec("
+            INSERT INTO `gallery_categories` (`name`, `description`, `status`) VALUES
+            ('宮廟建築', '本宮建築之美，展現傳統建築工藝', 1),
+            ('祭典活動', '重要祭典與慶典活動紀錄', 1),
+            ('文物典藏', '珍貴文物與歷史文獻', 1),
+            ('節慶活動', '年度重要節慶活動花絮', 1)
+        ");
     }
-    
-    // 建立相片表
-    $pdo->exec("CREATE TABLE IF NOT EXISTS gallery_images (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        category_id INT,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        image_path VARCHAR(255) NOT NULL,
-        thumbnail_path VARCHAR(255),
-        status TINYINT(1) DEFAULT 1,
-        view_count INT DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (category_id) REFERENCES gallery_categories(id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-    
-    // 檢查是否已有圖片資料
+
+    // 檢查是否需要插入測試圖片
     $stmt = $pdo->query("SELECT COUNT(*) FROM gallery_images");
     if ($stmt->fetchColumn() == 0) {
-        // 插入範例相片
-        $pdo->exec("INSERT INTO gallery_images (category_id, title, description, image_path, status) VALUES
-            (1, '浴佛法會', '浴佛節法會活動現場', 'uploads/gallery/sample1.jpg', 1),
-            (1, '祈福法會', '年度祈福法會盛況', 'uploads/gallery/sample2.jpg', 1),
-            (2, '新春祭祀', '農曆新年祭祀儀式', 'uploads/gallery/sample3.jpg', 1),
-            (3, '宮廟外觀', '宮廟建築之美', 'uploads/gallery/sample4.jpg', 1)");
+        // 先確保有分類存在
+        $stmt = $pdo->query("SELECT id FROM gallery_categories LIMIT 1");
+        $category = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($category) {
+            $category_id = $category['id'];
+            $pdo->exec("
+                INSERT INTO `gallery_images` (`category_id`, `title`, `description`, `image_path`, `status`) VALUES
+                ($category_id, '宮廟正面', '宮廟莊嚴的正面建築', 'uploads/gallery/temple-front.jpg', 1),
+                ($category_id, '龍柱雕刻', '精美的龍柱雕刻藝術', 'uploads/gallery/dragon-pillar.jpg', 1)
+            ");
+        }
     }
+
+    // 獲取分類列表
+    $stmt = $pdo->query("SELECT * FROM gallery_categories WHERE status = 1 ORDER BY id");
+    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 獲取當前分類
+    $current_category = isset($_GET['category']) ? (int)$_GET['category'] : null;
+
+    // 構建查詢條件
+    $where_clause = "WHERE i.status = 1";
+    $params = [];
+    
+    if ($current_category) {
+        $where_clause .= " AND i.category_id = :category_id";
+        $params[':category_id'] = $current_category;
+    }
+
+    // 獲取圖片列表
+    $sql = "
+        SELECT i.*, c.name as category_name 
+        FROM gallery_images i 
+        LEFT JOIN gallery_categories c ON i.category_id = c.id 
+        {$where_clause} 
+        ORDER BY i.created_at DESC
+    ";
+    
+    $stmt = $pdo->prepare($sql);
+    if (!empty($params)) {
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+    }
+    $stmt->execute();
+    $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
-    error_log("資料表建立錯誤：" . $e->getMessage());
+    error_log('資料庫錯誤：' . $e->getMessage());
+    die('系統發生錯誤，請稍後再試。錯誤代碼：' . $e->getCode());
 }
-
-// 獲取分類
-$stmt = $pdo->query("SELECT * FROM gallery_categories WHERE status = 1");
-$categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// 獲取當前分類
-$category_id = isset($_GET['category']) ? (int)$_GET['category'] : null;
-
-// 處理分頁
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 12; // 每頁顯示12張圖片
-$offset = ($page - 1) * $limit;
-
-// 構建查詢條件
-$where = "WHERE gi.status = 1";
-$params = array();
-if ($category_id) {
-    $where .= " AND gi.category_id = " . $category_id;
-}
-
-// 獲取總數
-$sql = "SELECT COUNT(*) FROM gallery_images gi " . $where;
-$total = $pdo->query($sql)->fetchColumn();
-$total_pages = ceil($total / $limit);
-
-// 獲取圖片
-$sql = "SELECT gi.*, ga.title as album_title, gc.name as category_name 
-        FROM gallery_images gi 
-        LEFT JOIN gallery_albums ga ON gi.album_id = ga.id
-        LEFT JOIN gallery_categories gc ON ga.category_id = gc.id 
-        {$where} 
-        ORDER BY gi.created_at DESC 
-        LIMIT {$offset}, {$limit}";
-$images = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-
-// 頁面標題
-$page_title = "活動花絮 | " . SITE_NAME;
-require_once 'templates/header.php';
 ?>
 
-<!-- 頁面橫幅 -->
-<!-- <div class="hero-section" style="background-image: url('assets/images/bg-gallery.jpg');">
-    <div class="hero-content">
-        <div class="container">
-            <h1 data-aos="fade-up">活動花絮</h1>
-            <p data-aos="fade-up" data-aos-delay="200">記錄每個珍貴時刻，分享宮廟活動的精彩瞬間</p>
-        </div>
-    </div>
-    <div class="wave-decoration">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320">
-            <path fill="#ffffff" fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-        </svg>
-    </div>
-</div> -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo SITE_NAME; ?> - 相簿藝廊</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+    <!-- Lightbox CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .gallery-container {
+            padding: 2rem 0;
+        }
+        .gallery-filters {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .filter-btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            color: #666;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .filter-btn.active {
+            background-color: #c1272d;
+            color: white;
+            border-color: #c1272d;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            padding: 0 1rem;
+        }
+        .gallery-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .gallery-item:hover {
+            transform: translateY(-5px);
+        }
+        .gallery-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+        .gallery-item-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 1rem;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .gallery-item:hover .gallery-item-overlay {
+            transform: translateY(0);
+        }
+        .gallery-item-title {
+            font-size: 1.1rem;
+            margin: 0 0 0.5rem;
+        }
+        .gallery-item-category {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        @media (max-width: 768px) {
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <?php include 'templates/header.php'; ?>
 
-<main>
-    <section class="gallery-section">
-        <div class="container">
-            <!-- 分類選單 -->
-            <div class="categories mb-4">
-                <a href="gallery.php" class="btn <?php echo !$category_id ? 'btn-primary' : 'btn-outline-primary'; ?> me-2">
-                    全部
+    <main class="container">
+        <div class="page-header">
+            <h1>相簿藝廊</h1>
+            <p class="subtitle">記錄宮廟重要時刻與珍貴回憶</p>
+        </div>
+
+        <div class="gallery-container">
+            <!-- 分類過濾器 -->
+            <div class="gallery-filters">
+                <a href="gallery.php" class="filter-btn <?php echo !$current_category ? 'active' : ''; ?>">
+                    全部相簿
                 </a>
-                <?php foreach ($categories as $cat): ?>
-                    <a href="gallery.php?category=<?php echo $cat['id']; ?>" 
-                       class="btn <?php echo $category_id == $cat['id'] ? 'btn-primary' : 'btn-outline-primary'; ?> me-2">
-                        <?php echo htmlspecialchars($cat['name']); ?>
+                <?php foreach ($categories as $category): ?>
+                    <a href="?category=<?php echo $category['id']; ?>" 
+                       class="filter-btn <?php echo $current_category === $category['id'] ? 'active' : ''; ?>">
+                        <?php echo htmlspecialchars($category['name']); ?>
                     </a>
                 <?php endforeach; ?>
             </div>
 
-            <?php if (empty($images)): ?>
-                <div class="alert alert-info">
-                    目前沒有相片
-                </div>
-            <?php else: ?>
-                <!-- 相片網格 -->
-                <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+            <!-- 相片網格 -->
+            <div class="gallery-grid">
+                <?php if (empty($images)): ?>
+                    <div class="no-results">
+                        <p>目前沒有相片</p>
+                    </div>
+                <?php else: ?>
                     <?php foreach ($images as $image): ?>
-                        <div class="col">
-                            <div class="card h-100">
-                                <img src="<?php echo htmlspecialchars($image['image_path']); ?>" 
-                                     class="card-img-top" 
-                                     alt="<?php echo htmlspecialchars($image['title']); ?>"
-                                     style="height: 200px; object-fit: cover;">
-                                <div class="card-body">
-                                    <h5 class="card-title"><?php echo htmlspecialchars($image['title']); ?></h5>
-                                    <p class="card-text small text-muted">
-                                        <?php echo htmlspecialchars($image['category_name']); ?> | 
-                                        <?php echo date('Y/m/d', strtotime($image['created_at'])); ?>
-                                    </p>
-                                    <?php if ($image['description']): ?>
-                                        <p class="card-text">
-                                            <?php echo nl2br(htmlspecialchars($image['description'])); ?>
-                                        </p>
-                                    <?php endif; ?>
+                        <div class="gallery-item">
+                            <a href="<?php echo htmlspecialchars($image['image_path']); ?>" 
+                               data-lightbox="gallery" 
+                               data-title="<?php echo htmlspecialchars($image['title']); ?>">
+                                <img src="<?php echo htmlspecialchars($image['thumbnail_path'] ?: $image['image_path']); ?>" 
+                                     alt="<?php echo htmlspecialchars($image['title']); ?>">
+                                <div class="gallery-item-overlay">
+                                    <h3 class="gallery-item-title">
+                                        <?php echo htmlspecialchars($image['title']); ?>
+                                    </h3>
+                                    <div class="gallery-item-category">
+                                        <i class="fas fa-folder"></i> 
+                                        <?php echo htmlspecialchars($image['category_name']); ?>
+                                    </div>
                                 </div>
-                                <div class="card-footer bg-transparent">
-                                    <small class="text-muted">
-                                        <i class="fas fa-eye"></i> <?php echo number_format($image['view_count']); ?>
-                                    </small>
-                                </div>
-                            </div>
+                            </a>
                         </div>
                     <?php endforeach; ?>
-                </div>
-
-                <!-- 分頁 -->
-                <?php if ($total_pages > 1): ?>
-                    <nav class="mt-4">
-                        <ul class="pagination justify-content-center">
-                            <?php if ($page > 1): ?>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=<?php echo $page - 1; ?><?php echo $category_id ? '&category=' . $category_id : ''; ?>">
-                                        <i class="fas fa-chevron-left"></i> 上一頁
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-
-                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
-                                    <a class="page-link" href="?page=<?php echo $i; ?><?php echo $category_id ? '&category=' . $category_id : ''; ?>">
-                                        <?php echo $i; ?>
-                                    </a>
-                                </li>
-                            <?php endfor; ?>
-
-                            <?php if ($page < $total_pages): ?>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=<?php echo $page + 1; ?><?php echo $category_id ? '&category=' . $category_id : ''; ?>">
-                                        下一頁 <i class="fas fa-chevron-right"></i>
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-                        </ul>
-                    </nav>
                 <?php endif; ?>
-            <?php endif; ?>
+            </div>
         </div>
-    </section>
-</main>
+    </main>
 
-<?php include 'includes/footer.php'; ?>
+    <?php include 'includes/footer.php'; ?>
 
-<!-- Fancybox -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css">
-<script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
-
-<!-- AOS -->
-<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-
-<script>
-    // 初始化 AOS
-    AOS.init({
-        duration: 800,
-        once: true
-    });
-
-    // 初始化 Fancybox
-    Fancybox.bind("[data-fancybox]", {
-        // 設定選項
-    });
-</script>
-
-<style>
-.hero-section {
-    position: relative;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    padding: 120px 0 160px;
-    color: #fff;
-    text-align: center;
-}
-
-.hero-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-}
-
-.hero-content {
-    position: relative;
-    z-index: 1;
-}
-
-.hero-content h1 {
-    font-size: 3em;
-    margin-bottom: 20px;
-}
-
-.hero-content p {
-    font-size: 1.2em;
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-.wave-decoration {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-}
-
-.gallery-section {
-    padding: 80px 0;
-    background-color: #fff;
-}
-
-.category-menu {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 40px;
-}
-
-.category-btn {
-    padding: 10px 20px;
-    border: 2px solid #c19b77;
-    border-radius: 30px;
-    color: #333;
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
-
-.category-btn:hover,
-.category-btn.active {
-    background-color: #c19b77;
-    color: #fff;
-}
-
-.photo-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 30px;
-    padding: 20px 0;
-}
-
-.photo-card {
-    background: #fff;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    transition: transform 0.3s ease;
-}
-
-.photo-card:hover {
-    transform: translateY(-5px);
-}
-
-.photo-card img {
-    width: 100%;
-    height: 250px;
-    object-fit: cover;
-}
-
-.photo-info {
-    padding: 20px;
-}
-
-.photo-info h3 {
-    margin: 0 0 10px;
-    font-size: 1.2em;
-    color: #333;
-}
-
-.photo-info p {
-    margin: 0 0 15px;
-    color: #666;
-    font-size: 0.9em;
-}
-
-.category-tag {
-    display: inline-block;
-    padding: 5px 10px;
-    background-color: #f0f0f0;
-    border-radius: 15px;
-    font-size: 0.8em;
-    color: #666;
-}
-
-@media (max-width: 768px) {
-    .hero-section {
-        padding: 80px 0 120px;
-    }
-
-    .hero-content h1 {
-        font-size: 2.5em;
-    }
-
-    .photo-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
-    }
-}
-</style> 
+    <!-- Lightbox JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+    <script>
+        lightbox.option({
+            'resizeDuration': 200,
+            'wrapAround': true,
+            'albumLabel': "圖片 %1 / %2"
+        });
+    </script>
+</body>
+</html> 

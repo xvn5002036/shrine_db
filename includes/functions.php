@@ -6,14 +6,36 @@
 require_once __DIR__ . '/auth.php';
 
 // 初始化資料庫連線
-$dbConfig = require dirname(__DIR__) . '/config/database.php';
-$GLOBALS['pdo'] = new PDO(
-    "mysql:host={$dbConfig['host']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}",
-    $dbConfig['username'],
-    $dbConfig['password'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
-$pdo = $GLOBALS['pdo'];
+try {
+    $dbConfig = require dirname(__DIR__) . '/config/database.php';
+    
+    // 先嘗試連接到 MySQL 伺服器
+    $pdo = new PDO(
+        "mysql:host={$dbConfig['host']};charset={$dbConfig['charset']}",
+        $dbConfig['username'],
+        $dbConfig['password'],
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    
+    // 檢查資料庫是否存在
+    $dbname = $dbConfig['dbname'];
+    $result = $pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$dbname'");
+    
+    if (!$result->fetch()) {
+        // 創建資料庫
+        $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    }
+    
+    // 選擇資料庫
+    $pdo->exec("USE `$dbname`");
+    
+    // 設置全域變數
+    $GLOBALS['pdo'] = $pdo;
+    
+} catch (PDOException $e) {
+    error_log('資料庫連線錯誤：' . $e->getMessage());
+    die('資料庫連線錯誤，請檢查設定。');
+}
 
 /**
  * 獲取網站設定值
