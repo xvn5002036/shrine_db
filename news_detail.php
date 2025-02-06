@@ -49,7 +49,10 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($news['title']); ?> - <?php echo htmlspecialchars(SITE_NAME); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/news-detail.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="<?php echo htmlspecialchars($news['title']); ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars(mb_substr(strip_tags($news['content']), 0, 100)); ?>">
     <?php if (!empty($news['image'])): ?>
@@ -57,7 +60,7 @@ try {
     <?php endif; ?>
 </head>
 <body>
-    <?php include 'includes/header.php'; ?>
+    <?php include 'templates/header.php'; ?>
 
     <div class="content-wrapper">
         <div class="container">
@@ -76,15 +79,17 @@ try {
                     <header class="news-header">
                         <h1><?php echo htmlspecialchars($news['title']); ?></h1>
                         <div class="news-meta">
-                            <span class="date">
+                            <span>
                                 <i class="far fa-calendar-alt"></i>
                                 <?php echo date('Y-m-d', strtotime($news['created_at'])); ?>
                             </span>
-                            <span class="author">
-                                <i class="far fa-user"></i>
-                                <?php echo htmlspecialchars($news['author_name'] ?? '管理員'); ?>
-                            </span>
-                            <span class="views">
+                            <?php if (!empty($news['category_name'])): ?>
+                                <span>
+                                    <i class="fas fa-folder"></i>
+                                    <?php echo htmlspecialchars($news['category_name']); ?>
+                                </span>
+                            <?php endif; ?>
+                            <span>
                                 <i class="far fa-eye"></i>
                                 <?php echo number_format($news['views']); ?> 次瀏覽
                             </span>
@@ -99,58 +104,43 @@ try {
                     <?php endif; ?>
 
                     <div class="news-content">
-                        <?php echo nl2br($news['content']); ?>
+                        <?php echo $news['content']; ?>
                     </div>
 
                     <footer class="news-footer">
                         <div class="share-buttons">
                             <span>分享：</span>
-                            <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode('http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" 
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode($current_url); ?>" 
                                target="_blank" class="share-btn facebook">
                                 <i class="fab fa-facebook-f"></i>
                             </a>
-                            <a href="https://social-plugins.line.me/lineit/share?url=<?php echo urlencode('http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" 
+                            <a href="https://social-plugins.line.me/lineit/share?url=<?php echo urlencode($current_url); ?>" 
                                target="_blank" class="share-btn line">
                                 <i class="fab fa-line"></i>
                             </a>
+                            <a href="https://twitter.com/intent/tweet?url=<?php echo urlencode($current_url); ?>&text=<?php echo urlencode($news['title']); ?>" 
+                               target="_blank" class="share-btn twitter">
+                                <i class="fab fa-twitter"></i>
+                            </a>
                         </div>
 
-                        <div class="news-navigation">
-                            <?php
-                            // 獲取上一篇和下一篇
-                            $prev_sql = "SELECT id, title FROM news WHERE id < :id ORDER BY id DESC LIMIT 1";
-                            $next_sql = "SELECT id, title FROM news WHERE id > :id ORDER BY id ASC LIMIT 1";
-                            
-                            $stmt = $pdo->prepare($prev_sql);
-                            $stmt->execute([':id' => $id]);
-                            $prev_news = $stmt->fetch();
-
-                            $stmt = $pdo->prepare($next_sql);
-                            $stmt->execute([':id' => $id]);
-                            $next_news = $stmt->fetch();
-                            ?>
-
-                            <div class="nav-links">
-                                <?php if ($prev_news): ?>
-                                    <a href="news_detail.php?id=<?php echo $prev_news['id']; ?>" class="nav-previous">
+                        <?php if (!empty($prev_news) || !empty($next_news)): ?>
+                            <div class="navigation-links">
+                                <?php if (!empty($prev_news)): ?>
+                                    <a href="news_detail.php?id=<?php echo $prev_news['id']; ?>" class="nav-link prev">
                                         <i class="fas fa-angle-left"></i>
-                                        <span>上一篇：<?php echo htmlspecialchars(mb_substr($prev_news['title'], 0, 20)); ?></span>
+                                        <?php echo htmlspecialchars($prev_news['title']); ?>
                                     </a>
                                 <?php endif; ?>
-
-                                <?php if ($next_news): ?>
-                                    <a href="news_detail.php?id=<?php echo $next_news['id']; ?>" class="nav-next">
-                                        <span>下一篇：<?php echo htmlspecialchars(mb_substr($next_news['title'], 0, 20)); ?></span>
+                                
+                                <?php if (!empty($next_news)): ?>
+                                    <a href="news_detail.php?id=<?php echo $next_news['id']; ?>" class="nav-link next">
+                                        <?php echo htmlspecialchars($next_news['title']); ?>
                                         <i class="fas fa-angle-right"></i>
                                     </a>
                                 <?php endif; ?>
                             </div>
-
-                            <a href="news.php" class="btn-back">
-                                <i class="fas fa-list"></i>
-                                返回列表
-                            </a>
-                        </div>
+                        <?php endif; ?>
                     </footer>
                 </article>
             </div>

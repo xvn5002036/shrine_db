@@ -34,6 +34,6 @@ CREATE TABLE IF NOT EXISTS `news` (
     KEY `idx_created_by` (`created_by`),
     KEY `idx_updated_by` (`updated_by`),
     CONSTRAINT `fk_news_category` FOREIGN KEY (`category_id`) REFERENCES `news_categories` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_news_created_by` FOREIGN KEY (`created_by`) REFERENCES `admins` (`id`),
-    CONSTRAINT `fk_news_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `admins` (`id`)
+    CONSTRAINT `fk_news_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+    CONSTRAINT `fk_news_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 

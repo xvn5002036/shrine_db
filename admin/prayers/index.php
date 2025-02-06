@@ -8,104 +8,90 @@ checkAdminLogin();
 // 獲取全域 PDO 實例
 $pdo = $GLOBALS['pdo'];
 
-// 處理搜索和篩選
-$search = trim($_GET['search'] ?? '');
-$status = $_GET['status'] ?? '';
-$prayer_type = $_GET['type'] ?? '';
-$start_date = $_GET['start_date'] ?? '';
-$end_date = $_GET['end_date'] ?? '';
+// 處理刪除請求
+if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
+    try {
+        // 先獲取祈福服務資訊，用於記錄日誌
+        $stmt = $pdo->prepare("SELECT name FROM prayer_services WHERE id = ?");
+        $stmt->execute([$_GET['delete']]);
+        $service = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// 處理分頁
+        if ($service) {
+            // 執行刪除
+            $stmt = $pdo->prepare("DELETE FROM prayer_services WHERE id = ?");
+            $stmt->execute([$_GET['delete']]);
+            
+            // 記錄操作日誌
+            logAdminAction('刪除祈福服務', "刪除祈福服務：{$service['name']}");
+            
+            // 設置成功消息
+            setFlashMessage('success', '祈福服務已成功刪除！');
+        }
+        
+        header('Location: index.php');
+        exit;
+    } catch (PDOException $e) {
+        $errors[] = '刪除失敗：' . $e->getMessage();
+    }
+}
+
+// 定義變數
+$errors = [];
+$services = [];
+$total_pages = 1;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 10;
-$offset = ($page - 1) * $limit;
+$per_page = 20;
 
-// 構建查詢條件
-$where_conditions = [];
-$params = [];
+try {
+    // 構建搜尋條件
+    $where = "1=1";
+    $params = array();
 
-if (!empty($search)) {
-    $where_conditions[] = "(pr.name LIKE :search OR pr.content LIKE :search)";
-    $params[':search'] = "%{$search}%";
+    if (isset($_GET['keyword']) && !empty($_GET['keyword'])) {
+        $where .= " AND (name LIKE :keyword OR description LIKE :keyword)";
+        $params[':keyword'] = "%" . $_GET['keyword'] . "%";
+    }
+
+    if (isset($_GET['status']) && !empty($_GET['status'])) {
+        $where .= " AND status = :status";
+        $params[':status'] = $_GET['status'];
+    }
+
+    // 計算總記錄數和分頁
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM prayer_services WHERE $where");
+    $stmt->execute($params);
+    $total_records = $stmt->fetchColumn();
+    $total_pages = ceil($total_records / $per_page);
+    $offset = ($page - 1) * $per_page;
+
+    // 獲取祈福服務記錄
+    $sql = "SELECT * FROM prayer_services 
+            WHERE $where 
+            ORDER BY sort_order ASC, created_at DESC 
+            LIMIT :limit OFFSET :offset";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    $errors[] = "資料庫錯誤：" . $e->getMessage();
 }
 
-if (!empty($status)) {
-    $where_conditions[] = "pr.status = :status";
-    $params[':status'] = $status;
-}
+// 定義狀態文字和樣式
+$status_class = [
+    'active' => 'success',
+    'inactive' => 'warning'
+];
 
-if (!empty($prayer_type)) {
-    $where_conditions[] = "pt.id = :prayer_type";
-    $params[':prayer_type'] = $prayer_type;
-}
-
-if (!empty($start_date)) {
-    $where_conditions[] = "pr.created_at >= :start_date";
-    $params[':start_date'] = $start_date . ' 00:00:00';
-}
-
-if (!empty($end_date)) {
-    $where_conditions[] = "pr.created_at <= :end_date";
-    $params[':end_date'] = $end_date . ' 23:59:59';
-}
-
-$where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
-
-// 獲取總記錄數
-$count_sql = "
-    SELECT COUNT(*) 
-    FROM prayer_requests pr 
-    LEFT JOIN prayer_types pt ON pr.type_id = pt.id
-    {$where_clause}
-";
-
-$stmt = $pdo->prepare($count_sql);
-foreach ($params as $key => $value) {
-    $stmt->bindValue($key, $value);
-}
-$stmt->execute();
-$total_records = $stmt->fetchColumn();
-$total_pages = ceil($total_records / $limit);
-
-// 獲取祈福請求列表
-$sql = "
-    SELECT 
-        pr.*,
-        pt.name as prayer_type_name,
-        a1.username as processed_by_name
-    FROM prayer_requests pr 
-    LEFT JOIN prayer_types pt ON pr.type_id = pt.id
-    LEFT JOIN admins a1 ON pr.processed_by = a1.id
-    {$where_clause}
-    ORDER BY 
-        CASE pr.status 
-            WHEN 'pending' THEN 1
-            WHEN 'processing' THEN 2
-            WHEN 'completed' THEN 3
-            ELSE 4
-        END,
-        pr.created_at DESC
-    LIMIT :offset, :limit
-";
-
-$stmt = $pdo->prepare($sql);
-foreach ($params as $key => $value) {
-    $stmt->bindValue($key, $value);
-}
-$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-$stmt->execute();
-$prayers = $stmt->fetchAll();
-
-// 獲取祈福類型列表（用於篩選）
-$prayer_types = $pdo->query("SELECT * FROM prayer_types ORDER BY sort_order")->fetchAll();
-
-// 狀態對應中文說明
-$status_map = [
-    'pending' => '待處理',
-    'processing' => '處理中',
-    'completed' => '已完成',
-    'cancelled' => '已取消'
+$status_text = [
+    'active' => '啟用',
+    'inactive' => '停用'
 ];
 ?>
 <!DOCTYPE html>
@@ -113,13 +99,9 @@ $status_map = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo SITE_NAME; ?> - 祈福管理</title>
+    <title><?php echo htmlspecialchars(SITE_NAME); ?> - 祈福服務管理</title>
     <link rel="stylesheet" href="../../assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <!-- Flatpickr -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
 </head>
 <body class="admin-page">
     <div class="admin-container">
@@ -130,111 +112,84 @@ $status_map = [
             
             <div class="admin-content">
                 <div class="content-header">
-                    <h2>祈福請求管理</h2>
-                    <div class="header-actions">
-                        <a href="export.php" class="btn btn-success">
-                            <i class="fas fa-file-export"></i> 匯出資料
-                        </a>
+                    <h2>祈福服務管理</h2>
+                    <div class="content-header-actions">
+                        <a href="add.php" class="btn btn-primary">新增祈福服務</a>
                     </div>
                 </div>
-
+                
                 <div class="content-card">
-                    <!-- 搜索和篩選 -->
-                    <div class="filter-section">
-                        <form action="" method="get" class="search-form">
-                            <div class="form-group">
-                                <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="搜索祈福請求...">
-                            </div>
-                            <div class="form-group">
-                                <select name="status">
-                                    <option value="">所有狀態</option>
-                                    <?php foreach ($status_map as $key => $value): ?>
-                                        <option value="<?php echo $key; ?>" <?php echo $status === $key ? 'selected' : ''; ?>>
-                                            <?php echo $value; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <select name="type">
-                                    <option value="">所有類型</option>
-                                    <?php foreach ($prayer_types as $type): ?>
-                                        <option value="<?php echo $type['id']; ?>" <?php echo $prayer_type == $type['id'] ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($type['name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <input type="text" name="start_date" id="start_date" value="<?php echo htmlspecialchars($start_date); ?>" placeholder="開始日期">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" name="end_date" id="end_date" value="<?php echo htmlspecialchars($end_date); ?>" placeholder="結束日期">
-                            </div>
-                            <button type="submit" class="btn btn-primary">搜索</button>
-                            <a href="index.php" class="btn btn-secondary">重置</a>
-                        </form>
-                    </div>
+                    <?php if (!empty($errors)): ?>
+                        <div class="alert alert-danger">
+                            <?php foreach ($errors as $error): ?>
+                                <p><?php echo htmlspecialchars($error); ?></p>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
 
-                    <!-- 祈福請求列表 -->
+                    <!-- 搜尋表單 -->
+                    <form method="GET" class="search-form">
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <input type="text" name="keyword" class="form-control" 
+                                       placeholder="搜尋服務名稱或描述" 
+                                       value="<?php echo isset($_GET['keyword']) ? htmlspecialchars($_GET['keyword']) : ''; ?>">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <select name="status" class="form-select">
+                                    <option value="">所有狀態</option>
+                                    <?php foreach ($status_text as $key => $text): ?>
+                                        <option value="<?php echo $key; ?>" 
+                                            <?php echo (isset($_GET['status']) && $_GET['status'] == $key) ? 'selected' : ''; ?>>
+                                            <?php echo $text; ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <button type="submit" class="btn btn-primary">搜尋</button>
+                                <a href="index.php" class="btn btn-secondary">重置</a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- 服務列表 -->
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>申請人</th>
-                                    <th>類型</th>
-                                    <th>內容</th>
+                                    <th>排序</th>
+                                    <th>服務名稱</th>
+                                    <th>價格</th>
                                     <th>狀態</th>
-                                    <th>申請時間</th>
-                                    <th>處理者</th>
+                                    <th>建立時間</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($prayers)): ?>
+                                <?php if (!empty($services)): ?>
+                                    <?php foreach ($services as $service): ?>
                                     <tr>
-                                        <td colspan="8" class="text-center">沒有找到祈福請求</td>
+                                        <td><?php echo htmlspecialchars($service['sort_order']); ?></td>
+                                        <td><?php echo htmlspecialchars($service['name']); ?></td>
+                                        <td>NT$ <?php echo number_format($service['price']); ?></td>
+                                        <td>
+                                            <span class="badge bg-<?php echo $status_class[$service['status']]; ?>">
+                                                <?php echo $status_text[$service['status']]; ?>
+                                            </span>
+                                        </td>
+                                        <td><?php echo date('Y-m-d H:i', strtotime($service['created_at'])); ?></td>
+                                        <td>
+                                            <a href="edit.php?id=<?php echo $service['id']; ?>" class="btn btn-sm btn-primary">編輯</a>
+                                            <a href="?delete=<?php echo $service['id']; ?>" class="btn btn-sm btn-danger" 
+                                               onclick="return confirm('確定要刪除此祈福服務嗎？');">刪除</a>
+                                        </td>
                                     </tr>
-                                <?php else: ?>
-                                    <?php foreach ($prayers as $prayer): ?>
-                                        <tr>
-                                            <td><?php echo $prayer['id']; ?></td>
-                                            <td>
-                                                <?php echo htmlspecialchars($prayer['user_name']); ?><br>
-                                                <small><?php echo htmlspecialchars($prayer['user_email']); ?></small>
-                                            </td>
-                                            <td><?php echo htmlspecialchars($prayer['prayer_type_name'] ?? '未分類'); ?></td>
-                                            <td>
-                                                <?php 
-                                                $content = mb_substr(strip_tags($prayer['content']), 0, 50, 'UTF-8');
-                                                echo htmlspecialchars($content) . (mb_strlen($prayer['content']) > 50 ? '...' : '');
-                                                ?>
-                                            </td>
-                                            <td>
-                                                <span class="status-badge status-<?php echo $prayer['status']; ?>">
-                                                    <?php echo $status_map[$prayer['status']] ?? $prayer['status']; ?>
-                                                </span>
-                                            </td>
-                                            <td><?php echo date('Y-m-d H:i', strtotime($prayer['created_at'])); ?></td>
-                                            <td><?php echo htmlspecialchars($prayer['processed_by_name'] ?? '-'); ?></td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <a href="process.php?id=<?php echo $prayer['id']; ?>" class="btn btn-sm btn-primary" title="處理">
-                                                        <i class="fas fa-tasks"></i>
-                                                    </a>
-                                                    <a href="view.php?id=<?php echo $prayer['id']; ?>" class="btn btn-sm btn-info" title="查看">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <?php if ($prayer['status'] === 'pending'): ?>
-                                                        <button onclick="confirmCancel(<?php echo $prayer['id']; ?>)" class="btn btn-sm btn-warning" title="取消">
-                                                            <i class="fas fa-ban"></i>
-                                                        </button>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </td>
-                                        </tr>
                                     <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center">沒有找到相關記錄</td>
+                                    </tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -242,37 +197,17 @@ $status_map = [
 
                     <!-- 分頁 -->
                     <?php if ($total_pages > 1): ?>
-                        <div class="pagination">
-                            <?php if ($page > 1): ?>
-                                <a href="?page=1<?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($status) ? '&status=' . urlencode($status) : ''; ?><?php echo !empty($prayer_type) ? '&type=' . urlencode($prayer_type) : ''; ?><?php echo !empty($start_date) ? '&start_date=' . urlencode($start_date) : ''; ?><?php echo !empty($end_date) ? '&end_date=' . urlencode($end_date) : ''; ?>" class="page-link">
-                                    <i class="fas fa-angle-double-left"></i>
-                                </a>
-                                <a href="?page=<?php echo $page - 1; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($status) ? '&status=' . urlencode($status) : ''; ?><?php echo !empty($prayer_type) ? '&type=' . urlencode($prayer_type) : ''; ?><?php echo !empty($start_date) ? '&start_date=' . urlencode($start_date) : ''; ?><?php echo !empty($end_date) ? '&end_date=' . urlencode($end_date) : ''; ?>" class="page-link">
-                                    <i class="fas fa-angle-left"></i>
-                                </a>
-                            <?php endif; ?>
-
-                            <?php
-                            $start_page = max(1, $page - 2);
-                            $end_page = min($total_pages, $page + 2);
-                            
-                            for ($i = $start_page; $i <= $end_page; $i++):
-                            ?>
-                                <a href="?page=<?php echo $i; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($status) ? '&status=' . urlencode($status) : ''; ?><?php echo !empty($prayer_type) ? '&type=' . urlencode($prayer_type) : ''; ?><?php echo !empty($start_date) ? '&start_date=' . urlencode($start_date) : ''; ?><?php echo !empty($end_date) ? '&end_date=' . urlencode($end_date) : ''; ?>" 
-                                   class="page-link <?php echo $i === $page ? 'active' : ''; ?>">
-                                    <?php echo $i; ?>
-                                </a>
+                    <nav class="pagination-container">
+                        <ul class="pagination">
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                                    <a class="page-link" href="?page=<?php echo $i; ?><?php echo isset($_GET['keyword']) ? '&keyword='.urlencode($_GET['keyword']) : ''; ?><?php echo isset($_GET['status']) ? '&status='.$_GET['status'] : ''; ?>">
+                                        <?php echo $i; ?>
+                                    </a>
+                                </li>
                             <?php endfor; ?>
-
-                            <?php if ($page < $total_pages): ?>
-                                <a href="?page=<?php echo $page + 1; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($status) ? '&status=' . urlencode($status) : ''; ?><?php echo !empty($prayer_type) ? '&type=' . urlencode($prayer_type) : ''; ?><?php echo !empty($start_date) ? '&start_date=' . urlencode($start_date) : ''; ?><?php echo !empty($end_date) ? '&end_date=' . urlencode($end_date) : ''; ?>" class="page-link">
-                                    <i class="fas fa-angle-right"></i>
-                                </a>
-                                <a href="?page=<?php echo $total_pages; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($status) ? '&status=' . urlencode($status) : ''; ?><?php echo !empty($prayer_type) ? '&type=' . urlencode($prayer_type) : ''; ?><?php echo !empty($start_date) ? '&start_date=' . urlencode($start_date) : ''; ?><?php echo !empty($end_date) ? '&end_date=' . urlencode($end_date) : ''; ?>" class="page-link">
-                                    <i class="fas fa-angle-double-right"></i>
-                                </a>
-                            <?php endif; ?>
-                        </div>
+                        </ul>
+                    </nav>
                     <?php endif; ?>
                 </div>
             </div>
@@ -280,24 +215,5 @@ $status_map = [
     </div>
 
     <script src="../../assets/js/admin.js"></script>
-    <script>
-        // 初始化日期選擇器
-        flatpickr("#start_date", {
-            dateFormat: "Y-m-d",
-            locale: "zh-tw"
-        });
-        
-        flatpickr("#end_date", {
-            dateFormat: "Y-m-d",
-            locale: "zh-tw"
-        });
-
-        // 確認取消祈福請求
-        function confirmCancel(id) {
-            if (confirm('確定要取消這個祈福請求嗎？')) {
-                window.location.href = 'cancel.php?id=' + id;
-            }
-        }
-    </script>
 </body>
 </html> 

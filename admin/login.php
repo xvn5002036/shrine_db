@@ -24,34 +24,16 @@ $error = '';
 
 // 處理登入請求
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
     
     if (empty($username) || empty($password)) {
-        $error = '請輸入帳號和密碼';
+        $error = '請輸入用戶名和密碼';
     } else {
         try {
-            $pdo = new PDO(
-                "mysql:host={$dbConfig['host']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}",
-                $dbConfig['username'],
-                $dbConfig['password'],
-                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-
-            $stmt = $pdo->prepare("SELECT id, password, status FROM admins WHERE username = ? AND status = 'active'");
-            $stmt->execute([$username]);
-            $admin = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($admin && password_verify($password, $admin['password'])) {
-                $_SESSION['admin_logged_in'] = true;
-                $_SESSION['admin_id'] = $admin['id'];
-                $_SESSION['admin_username'] = $username;
-
-                // 更新最後登入時間
-                $stmt = $pdo->prepare("UPDATE admins SET last_login = NOW() WHERE id = ?");
-                $stmt->execute([$admin['id']]);
-
-                // 檢查是否有需要重定向的頁面
+            // 驗證管理員憑證
+            if (validateAdminCredentials($username, $password)) {
+                // 如果有保存的重定向URL，則重定向到該URL
                 if (isset($_SESSION['redirect_after_login'])) {
                     $redirect = $_SESSION['redirect_after_login'];
                     unset($_SESSION['redirect_after_login']);
@@ -61,10 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 exit;
             } else {
-                $error = '帳號或密碼錯誤';
+                $error = '用戶名或密碼錯誤';
             }
         } catch (PDOException $e) {
-            error_log('登入錯誤：' . $e->getMessage());
+            error_log('登入時發生錯誤：' . $e->getMessage());
             $error = '系統錯誤，請稍後再試';
         }
     }

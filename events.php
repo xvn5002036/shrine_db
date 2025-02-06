@@ -276,7 +276,7 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
         <?php endif; ?>
     </main>
 
-<?php include 'templates/footer.php'; ?>
+    <?php include 'includes/footer.php'; ?>
 <script src="assets/js/main.js"></script>
 </body>
 </html>

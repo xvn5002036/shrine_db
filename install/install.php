@@ -135,24 +135,46 @@ if ($_POST['step'] == '3') {
         $admin_password = password_hash($_POST['admin_password'], PASSWORD_DEFAULT);
         $admin_email = $_POST['admin_email'];
 
-        // 更新網站設定
-        $stmt = $db->prepare("UPDATE settings SET value = ? WHERE `key` = 'site_name'");
-        $stmt->execute([$site_name]);
+        try {
+            // 更新網站設定
+            $stmt = $db->prepare("UPDATE settings SET value = ? WHERE `key` = 'site_name'");
+            $stmt->execute([$site_name]);
 
-        // 刪除現有的管理員帳號
-        $stmt = $db->prepare("DELETE FROM admins");
-        $stmt->execute();
+            // 檢查users表格是否存在
+            $stmt = $db->query("SHOW TABLES LIKE 'users'");
+            if ($stmt->rowCount() == 0) {
+                throw new Exception('users表格不存在');
+            }
 
-        // 創建管理員帳號
-        $stmt = $db->prepare("INSERT INTO admins (username, password, name, email, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', NOW(), NOW())");
-        $stmt->execute([$admin_username, $admin_password, '系統管理員', $admin_email]);
+            // 刪除現有的管理員帳號
+            $stmt = $db->prepare("DELETE FROM users WHERE role = 'admin'");
+            $stmt->execute();
 
-        // 標記安裝完成
-        file_put_contents('../config/installed.php', '<?php return true;');
+            // 創建管理員帳號
+            $stmt = $db->prepare("INSERT INTO users (username, password, email, role, status, created_at, updated_at) VALUES (?, ?, ?, 'admin', 1, NOW(), NOW())");
+            if (!$stmt->execute([$admin_username, $admin_password, $admin_email])) {
+                throw new Exception('創建管理員帳號失敗：' . implode(', ', $stmt->errorInfo()));
+            }
 
-        // 重定向到完成頁面
-        header('Location: index.php?step=4');
-        exit;
+            // 驗證管理員帳號是否創建成功
+            $stmt = $db->prepare("SELECT * FROM users WHERE username = ? AND role = 'admin'");
+            $stmt->execute([$admin_username]);
+            $admin = $stmt->fetch();
+            if (!$admin) {
+                throw new Exception('管理員帳號創建後無法驗證');
+            }
+
+            error_log("管理員帳號創建成功：{$admin_username}");
+
+            // 標記安裝完成
+            file_put_contents('../config/installed.php', '<?php return true;');
+
+            // 重定向到完成頁面
+            header('Location: index.php?step=4');
+            exit;
+        } catch (Exception $e) {
+            die('設定錯誤：' . $e->getMessage());
+        }
     } catch (Exception $e) {
         die('設定錯誤：' . $e->getMessage());
     }

@@ -114,6 +114,7 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in']) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>最新消息 - <?php echo htmlspecialchars(SITE_NAME); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/news.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
@@ -147,6 +148,9 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in']) {
                 <!-- 搜尋區塊 -->
                 <div class="search-block">
                     <form action="" method="get" class="search-form">
+                        <?php if ($category_id > 0): ?>
+                            <input type="hidden" name="category" value="<?php echo $category_id; ?>">
+                        <?php endif; ?>
                         <div class="input-group">
                             <input type="text" name="search" 
                                    placeholder="請輸入關鍵字..." 
@@ -159,21 +163,13 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in']) {
                 </div>
 
                 <!-- 新聞列表 -->
-                <div class="news-grid">
-                    <?php if (empty($news_list)): ?>
-                        <div class="no-data">
-                            <i class="fas fa-info-circle"></i>
-                            <p>目前沒有最新消息</p>
-                            <?php if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in']): ?>
-                                <div class="debug-info" style="display:none;">
-                                    <p>SQL: <?php echo htmlspecialchars($sql); ?></p>
-                                    <p>Where: <?php echo htmlspecialchars($where_clause); ?></p>
-                                    <p>Total Records: <?php echo $total_records; ?></p>
-                                    <p>Params: <?php echo htmlspecialchars(print_r($params, true)); ?></p>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    <?php else: ?>
+                <?php if (empty($news_list)): ?>
+                    <div class="no-data">
+                        <i class="fas fa-info-circle"></i>
+                        <p>目前沒有最新消息</p>
+                    </div>
+                <?php else: ?>
+                    <div class="news-grid">
                         <?php foreach ($news_list as $news): ?>
                             <div class="news-card">
                                 <?php if (!empty($news['image'])): ?>
@@ -191,19 +187,15 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in']) {
                                         </a>
                                     </h2>
                                     <div class="news-meta">
-                                        <span class="date">
+                                        <span>
                                             <i class="far fa-calendar-alt"></i>
                                             <?php echo date('Y-m-d', strtotime($news['created_at'])); ?>
                                         </span>
-                                        <span class="author">
-                                            <i class="far fa-user"></i>
-                                            <?php echo htmlspecialchars($news['author_name'] ?? '管理員'); ?>
-                                        </span>
                                         <?php if (!empty($news['category_name'])): ?>
-                                        <span class="category">
-                                            <i class="fas fa-folder"></i>
-                                            <?php echo htmlspecialchars($news['category_name']); ?>
-                                        </span>
+                                            <span>
+                                                <i class="fas fa-folder"></i>
+                                                <?php echo htmlspecialchars($news['category_name']); ?>
+                                            </span>
                                         <?php endif; ?>
                                     </div>
                                     <div class="news-excerpt">
@@ -221,33 +213,24 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in']) {
                                 </div>
                             </div>
                         <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
+                    </div>
 
-                <!-- 分頁 -->
-                <?php if ($total_pages > 1): ?>
-                    <div class="pagination">
-                        <?php 
-                        $query_params = [];
-                        if (!empty($search)) $query_params['search'] = urlencode($search);
-                        if ($category_id > 0) $query_params['category'] = $category_id;
-                        $query_string = !empty($query_params) ? '&' . http_build_query($query_params) : '';
-                        ?>
-                        
-                        <?php if ($page > 1): ?>
-                            <a href="?page=1<?php echo $query_string; ?>" class="page-btn first">
-                                <i class="fas fa-angle-double-left"></i>
-                            </a>
-                            <a href="?page=<?php echo $page - 1; ?><?php echo $query_string; ?>" class="page-btn prev">
-                                <i class="fas fa-angle-left"></i>
-                            </a>
-                        <?php endif; ?>
+                    <!-- 分頁 -->
+                    <?php if ($total_pages > 1): ?>
+                        <div class="pagination">
+                            <?php if ($page > 1): ?>
+                                <a href="?page=1<?php echo $query_string; ?>" class="page-btn first">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                                <a href="?page=<?php echo $page - 1; ?><?php echo $query_string; ?>" class="page-btn prev">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            <?php endif; ?>
 
-                        <div class="page-numbers">
                             <?php
                             $start_page = max(1, $page - 2);
                             $end_page = min($total_pages, $page + 2);
-
+                            
                             for ($i = $start_page; $i <= $end_page; $i++):
                             ?>
                                 <a href="?page=<?php echo $i; ?><?php echo $query_string; ?>" 
@@ -255,17 +238,17 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in']) {
                                     <?php echo $i; ?>
                                 </a>
                             <?php endfor; ?>
-                        </div>
 
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?php echo $page + 1; ?><?php echo $query_string; ?>" class="page-btn next">
-                                <i class="fas fa-angle-right"></i>
-                            </a>
-                            <a href="?page=<?php echo $total_pages; ?><?php echo $query_string; ?>" class="page-btn last">
-                                <i class="fas fa-angle-double-right"></i>
-                            </a>
-                        <?php endif; ?>
-                    </div>
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?page=<?php echo $page + 1; ?><?php echo $query_string; ?>" class="page-btn next">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                                <a href="?page=<?php echo $total_pages; ?><?php echo $query_string; ?>" class="page-btn last">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

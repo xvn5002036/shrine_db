@@ -41,6 +41,6 @@ CREATE TABLE IF NOT EXISTS `donations` (
   KEY `idx_status` (`status`),
   KEY `idx_processed_by` (`processed_by`),
   KEY `idx_donation_type` (`donation_type_id`),
-  CONSTRAINT `fk_donations_processed_by` FOREIGN KEY (`processed_by`) REFERENCES `admins` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_donations_processed_by` FOREIGN KEY (`processed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_donations_type` FOREIGN KEY (`donation_type_id`) REFERENCES `donation_types` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='捐款記錄'; 

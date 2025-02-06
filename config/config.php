@@ -70,10 +70,10 @@ define('SITE_URL', 'http://localhost');
 define('ADMIN_EMAIL', $config['admin_email']);
 
 // 資料庫設定
-define('DB_HOST', $database_config['host']);
-define('DB_NAME', $database_config['dbname']);
-define('DB_USER', $database_config['username']);
-define('DB_PASS', $database_config['password']);
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'shrine_db');
+define('DB_USER', 'root');
+define('DB_PASS', '');
 
 // 網站功能設定
 define('ENABLE_REGISTRATION', true);  // 是否開放註冊
@@ -97,7 +97,22 @@ function is_logged_in() {
 
 function is_admin() {
     return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
-} 
+}
+
+// 錯誤處理函數
+function handleError($error) {
+    $_SESSION['error'] = $error;
+    header('Location: ' . $_SERVER['HTTP_REFERER']);
+    exit;
+}
+
+// 成功處理函數
+function handleSuccess($message) {
+    $_SESSION['success'] = $message;
+    header('Location: ' . $_SERVER['HTTP_REFERER']);
+    exit;
+}
+?>
 
 
 

@@ -61,7 +61,7 @@ if (session_status() === PHP_SESSION_NONE) {
             </li>
             
             <li class="<?php echo strpos($_SERVER['PHP_SELF'], '/admin/backup') !== false ? 'active' : ''; ?>">
-                <a href="/admin/backup/index.php">
+                <a href="/admin/backups/index.php">
                     <i class="fas fa-database"></i>
                     數據備份
                 </a>

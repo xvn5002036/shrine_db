@@ -3,55 +3,49 @@ CREATE DATABASE IF NOT EXISTS `shrine_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_
 
 USE `shrine_db`;
 
--- 管理員表
-CREATE TABLE IF NOT EXISTS `admins` (
+-- 用戶表
+CREATE TABLE IF NOT EXISTS `users` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `username` VARCHAR(50) NOT NULL UNIQUE,
     `password` VARCHAR(255) NOT NULL,
-    `name` VARCHAR(100) NOT NULL,
-    `email` VARCHAR(100) NOT NULL UNIQUE,
-    `status` ENUM('active', 'inactive') DEFAULT 'active',
+    `role` ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    `status` TINYINT NOT NULL DEFAULT 1,
     `last_login` DATETIME DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 管理員操作日誌表
-CREATE TABLE IF NOT EXISTS `admin_logs` (
+-- 用戶日誌表
+CREATE TABLE IF NOT EXISTS `user_logs` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `admin_id` INT UNSIGNED,
-    `action` VARCHAR(100) NOT NULL,
+    `user_id` INT UNSIGNED,
+    `action` VARCHAR(255) NOT NULL,
     `details` TEXT,
     `ip_address` VARCHAR(45),
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`admin_id`) REFERENCES `admins`(`id`) ON DELETE SET NULL
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 新聞分類表
-CREATE TABLE IF NOT EXISTS news_categories (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS `news_categories` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(50) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 新聞表
-CREATE TABLE IF NOT EXISTS news (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    image VARCHAR(255),
-    status ENUM('draft', 'published') DEFAULT 'draft',
-    views INT UNSIGNED DEFAULT 0,
-    category_id INT UNSIGNED,
-    publish_date DATETIME,
-    created_by INT UNSIGNED,
-    updated_by INT UNSIGNED,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES news_categories(id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by) REFERENCES admins(id) ON DELETE SET NULL
+CREATE TABLE IF NOT EXISTS `news` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(255) NOT NULL,
+    `content` TEXT NOT NULL,
+    `status` ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'draft',
+    `created_by` INT UNSIGNED,
+    `updated_by` INT UNSIGNED,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 系統設置表
@@ -62,7 +56,7 @@ CREATE TABLE IF NOT EXISTS `settings` (
     `description` VARCHAR(255),
     `updated_by` INT UNSIGNED,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (`updated_by`) REFERENCES `admins`(`id`) ON DELETE SET NULL
+    FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 備份記錄表
@@ -72,27 +66,23 @@ CREATE TABLE IF NOT EXISTS `backups` (
     `size` INT UNSIGNED NOT NULL,
     `created_by` INT UNSIGNED,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`created_by`) REFERENCES `admins`(`id`) ON DELETE SET NULL
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 活動表
 CREATE TABLE IF NOT EXISTS `events` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `title` VARCHAR(255) NOT NULL,
-    `description` TEXT NOT NULL,
-    `event_date` DATE NOT NULL,
-    `event_time` TIME NOT NULL,
-    `location` VARCHAR(255) NOT NULL,
-    `max_participants` INT UNSIGNED DEFAULT 0,
-    `current_participants` INT UNSIGNED DEFAULT 0,
-    `image` VARCHAR(255),
-    `status` ENUM('draft', 'published', 'cancelled', 'completed') DEFAULT 'draft',
+    `description` TEXT,
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `status` ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'draft',
     `created_by` INT UNSIGNED,
     `updated_by` INT UNSIGNED,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (`created_by`) REFERENCES `admins`(`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`updated_by`) REFERENCES `admins`(`id`) ON DELETE SET NULL
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 活動報名表
@@ -110,9 +100,26 @@ CREATE TABLE IF NOT EXISTS `event_registrations` (
     FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 捐款表
+CREATE TABLE IF NOT EXISTS `donations` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `donor_name` VARCHAR(100) NOT NULL,
+    `amount` DECIMAL(10,2) NOT NULL,
+    `donation_date` DATE NOT NULL,
+    `payment_method` VARCHAR(50),
+    `status` ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
+    `notes` TEXT,
+    `created_by` INT UNSIGNED,
+    `processed_by` INT UNSIGNED,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`processed_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 插入默認管理員帳號
-INSERT INTO `admins` (`username`, `password`, `name`, `email`, `status`) VALUES
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '系統管理員', 'admin@example.com', 'active');
+INSERT INTO `users` (`username`, `password`, `role`, `status`) VALUES
+('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 1);
 -- 注意：默認密碼為 "password"，請在首次登入後立即修改
 
 -- 插入基本系統設置

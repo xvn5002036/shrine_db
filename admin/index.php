@@ -1,12 +1,15 @@
 <?php
 require_once '../config/config.php';
+require_once '../config/database.php';
 require_once '../includes/functions.php';
+
 
 // 檢查管理員是否已登入
 checkAdminLogin();
 
 // 獲取全域 PDO 實例
 $pdo = $GLOBALS['pdo'];
+
 
 // 獲取基本統計資料
 try {
@@ -124,13 +127,12 @@ $system_info = [
 </head>
 <body class="admin-page">
     <div class="admin-container">
-        <?php include 'includes/sidebar.php'; ?>
+    <?php include 'includes/sidebar.php'; ?>
         
-        <main class="admin-main">
+    <main class="admin-main">
             <?php include 'includes/header.php'; ?>
             
-            <div class="admin-content">
-                <div class="dashboard">
+
                     <!-- 快速操作按鈕 -->
                     <div class="quick-actions">
                         <a href="news/add.php" class="quick-action-btn">
@@ -370,9 +372,10 @@ $system_info = [
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
 
-    <script src="../assets/js/admin.js"></script>
+        </main>
+
+    </div>
+    <script src="../assets/js/admin.js"></script> 
 </body>
 </html> 

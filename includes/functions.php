@@ -3,14 +3,17 @@
  * 通用函數庫
  */
 
+require_once __DIR__ . '/auth.php';
+
 // 初始化資料庫連線
 $dbConfig = require dirname(__DIR__) . '/config/database.php';
-$db = new PDO(
+$GLOBALS['pdo'] = new PDO(
     "mysql:host={$dbConfig['host']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}",
     $dbConfig['username'],
     $dbConfig['password'],
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
+$pdo = $GLOBALS['pdo'];
 
 /**
  * 獲取網站設定值
@@ -19,9 +22,9 @@ $db = new PDO(
  * @return string
  */
 function getSetting($key, $default = '') {
-    global $db;
+    global $pdo;
     try {
-        $stmt = $db->prepare("SELECT value FROM settings WHERE `key` = ?");
+        $stmt = $pdo->prepare("SELECT value FROM settings WHERE `key` = ?");
         $stmt->execute([$key]);
         $result = $stmt->fetch();
         return $result ? $result['value'] : $default;
@@ -35,10 +38,10 @@ function getSetting($key, $default = '') {
  * 更新網站設定
  */
 function updateSetting($key, $value) {
-    global $db;
+    global $pdo;
     
     try {
-        $stmt = $db->prepare("
+        $stmt = $pdo->prepare("
             INSERT INTO settings (`key`, `value`, `created_at`, `updated_at`)
             VALUES (?, ?, NOW(), NOW())
             ON DUPLICATE KEY UPDATE
@@ -50,20 +53,6 @@ function updateSetting($key, $value) {
         error_log('無法更新網站設定：' . $e->getMessage());
         return false;
     }
-}
-
-/**
- * 檢查是否為管理員
- */
-function isAdmin() {
-    return isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true;
-}
-
-/**
- * 檢查是否已登入
- */
-function isLoggedIn() {
-    return isset($_SESSION['user_id']);
 }
 
 /**
@@ -176,12 +165,12 @@ function generatePagination($total, $perPage, $currentPage) {
  * 記錄系統日誌
  */
 function logSystemActivity($action, $level = 'info', $details = '') {
-    global $db;
+    global $pdo;
     
     $userId = getCurrentUserId();
     $ip = $_SERVER['REMOTE_ADDR'];
     
-    $stmt = $db->prepare("
+    $stmt = $pdo->prepare("
         INSERT INTO system_logs 
         (user_id, action, level, details, ip_address, created_at) 
         VALUES (?, ?, ?, ?, ?, NOW())
@@ -205,9 +194,9 @@ function checkPermission($permission) {
  * 發送系統通知
  */
 function sendSystemNotification($userId, $title, $message, $type = 'info') {
-    global $db;
+    global $pdo;
     
-    $stmt = $db->prepare("
+    $stmt = $pdo->prepare("
         INSERT INTO notifications 
         (user_id, title, message, type, created_at) 
         VALUES (?, ?, ?, ?, NOW())
@@ -317,7 +306,7 @@ function checkAdminLogin() {
     // 檢查管理員是否仍然有效
     global $pdo;
     try {
-        $stmt = $pdo->prepare("SELECT id, status FROM admins WHERE id = ? AND status = 'active'");
+        $stmt = $pdo->prepare("SELECT id, status FROM users WHERE id = ? AND status = 1 AND role = 'admin'");
         $stmt->execute([$_SESSION['admin_id']]);
         $admin = $stmt->fetch();
         
@@ -344,27 +333,49 @@ function checkAdminLogin() {
  * 驗證管理員憑證
  */
 function validateAdminCredentials($username, $password) {
-    global $db;
+    global $pdo;
     try {
-        $stmt = $db->prepare("SELECT id, password, status FROM admins WHERE username = ?");
+        // 先檢查用戶是否存在
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
         $stmt->execute([$username]);
-        $admin = $stmt->fetch();
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($admin && password_verify($password, $admin['password']) && $admin['status'] === 'active') {
+        if (!$user) {
+            error_log("管理員登入失敗：找不到用戶名 {$username}");
+            return false;
+        }
+
+        // 檢查角色和狀態
+        if ($user['role'] !== 'admin') {
+            error_log("管理員登入失敗：用戶 {$username} 不是管理員角色");
+            return false;
+        }
+
+        if ($user['status'] != 1) {
+            error_log("管理員登入失敗：用戶 {$username} 狀態不是啟用狀態");
+            return false;
+        }
+
+        // 驗證密碼
+        if (password_verify($password, $user['password'])) {
             // 設置登入狀態
             $_SESSION['admin_logged_in'] = true;
-            $_SESSION['admin_id'] = $admin['id'];
+            $_SESSION['admin_id'] = $user['id'];
             
             // 更新最後登入時間
-            $updateStmt = $db->prepare("UPDATE admins SET last_login = NOW() WHERE id = ?");
-            $updateStmt->execute([$admin['id']]);
+            $updateStmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+            $updateStmt->execute([$user['id']]);
             
+            error_log("管理員 {$username} 登入成功");
             return true;
+        } else {
+            error_log("管理員登入失敗：{$username} 密碼錯誤");
+            return false;
         }
     } catch (PDOException $e) {
         error_log('驗證管理員憑證時發生錯誤：' . $e->getMessage());
+        return false;
     }
-    return false;
 }
 
 /**

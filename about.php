@@ -206,7 +206,7 @@ try {
         </div>
     </main>
 
-    <?php include 'templates/footer.php'; ?>
+    <?php include 'includes/footer.php'; ?>
     
     <script src="assets/js/main.js"></script>
     <script>
