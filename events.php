@@ -9,6 +9,102 @@ mb_internal_encoding('UTF-8');
 // 獲取全域 PDO 實例
 $pdo = $GLOBALS['pdo'];
 
+// 檢查並創建必要的資料表
+try {
+    // 先刪除子表（events），再刪除父表（event_types）
+    $pdo->exec("SET FOREIGN_KEY_CHECKS = 0"); // 暫時關閉外鍵檢查
+    $pdo->exec("DROP TABLE IF EXISTS events");
+    $pdo->exec("DROP TABLE IF EXISTS event_types");
+    $pdo->exec("SET FOREIGN_KEY_CHECKS = 1"); // 重新開啟外鍵檢查
+
+    // 創建 event_types 表
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `event_types` (
+            `id` INT PRIMARY KEY AUTO_INCREMENT,
+            `name` VARCHAR(50) NOT NULL,
+            `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    // 插入預設活動類型
+    $pdo->exec("
+        INSERT INTO `event_types` (`name`, `description`) VALUES
+        ('宮廟祭典', '重要神明聖誕、祭典活動'),
+        ('節慶活動', '傳統節慶與慶典活動'),
+        ('祈福活動', '平安祈福、消災解厄活動'),
+        ('公益活動', '慈善與社會服務活動')
+    ");
+
+    // 創建 events 表
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `events` (
+            `id` INT PRIMARY KEY AUTO_INCREMENT,
+            `type_id` INT,
+            `title` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `image` VARCHAR(255),
+            `start_date` DATETIME NOT NULL,
+            `end_date` DATETIME NOT NULL,
+            `location` VARCHAR(255) NOT NULL,
+            `max_participants` INT DEFAULT 0,
+            `current_participants` INT DEFAULT 0,
+            `registration_start_date` DATETIME NOT NULL,
+            `registration_end_date` DATETIME NOT NULL,
+            `status` TINYINT(1) DEFAULT 1,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (type_id) REFERENCES event_types(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    // 插入範例活動
+    $pdo->exec("
+        INSERT INTO `events` (
+            `type_id`,
+            `title`,
+            `description`,
+            `start_date`,
+            `end_date`,
+            `location`,
+            `max_participants`,
+            `registration_start_date`,
+            `registration_end_date`,
+            `status`
+        ) VALUES
+        (1, '玉皇上帝聖誕祝壽', '農曆正月初九玉皇上帝聖誕，舉行祝壽大典，設有祈福點燈、敬獻供品等儀式。', 
+            DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), 
+            '正殿', 200, DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), INTERVAL 30 DAY), 
+            DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), INTERVAL 1 DAY), 1),
+        (2, '媽祖遶境祈福', '農曆三月媽祖遶境活動，遊行隊伍將途經轄區內重要街道，為地方祈福。', 
+            DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), 
+            '廟前廣場', 500, DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), INTERVAL 30 DAY), 
+            DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), INTERVAL 1 DAY), 1),
+        (3, '端午節祭典', '端午節祭典活動，設有祭祀儀式、包粽子體驗等傳統文化活動。', 
+            DATE_ADD(CURRENT_DATE, INTERVAL 21 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 21 DAY), 
+            '廟前廣場', 100, DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 21 DAY), INTERVAL 30 DAY), 
+            DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 21 DAY), INTERVAL 1 DAY), 1),
+        (4, '中元普渡法會', '農曆七月普渡法會，設有祭祀儀式、普渡供品、祈福消災等活動。', 
+            DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 
+            '廟前廣場', 0, DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), INTERVAL 30 DAY), 
+            DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), INTERVAL 1 DAY), 1)
+    ");
+
+    // 獲取活動類型列表
+    $stmt = $pdo->query("
+        SELECT DISTINCT t.name as event_type 
+        FROM events e 
+        LEFT JOIN event_types t ON e.type_id = t.id 
+        WHERE e.status = 1
+    ");
+    $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+} catch (PDOException $e) {
+    error_log('創建資料表錯誤：' . $e->getMessage());
+    die('系統發生錯誤：' . $e->getMessage());
+}
+
 // 處理分頁
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = ITEMS_PER_PAGE;
@@ -21,10 +117,13 @@ $event_type = isset($_GET['type']) ? $_GET['type'] : '';
 if (isset($_GET['id'])) {
     $event_id = (int)$_GET['id'];
     $stmt = $pdo->prepare("
-        SELECT e.*, t.name as type_name 
+        SELECT e.*, t.name as type_name,
+            (SELECT COALESCE(SUM(participants), 0) 
+             FROM event_registrations 
+             WHERE event_id = e.id AND status = 1) as current_participants
         FROM events e 
-        LEFT JOIN event_types t ON e.event_type_id = t.id 
-        WHERE e.id = ? AND e.status = 'published'
+        LEFT JOIN event_types t ON e.type_id = t.id 
+        WHERE e.id = ? AND e.status = 1
     ");
     $stmt->execute([$event_id]);
     $event = $stmt->fetch();
@@ -35,7 +134,7 @@ if (isset($_GET['id'])) {
     }
 } else {
     // 構建查詢條件
-    $where_clause = "WHERE e.status = 'published'";
+    $where_clause = "WHERE e.status = 1";
     $params = [];
     
     if ($event_type) {
@@ -44,13 +143,13 @@ if (isset($_GET['id'])) {
     }
     
     // 只顯示未結束的活動
-    $where_clause .= " AND e.event_date >= CURRENT_DATE()";
+    $where_clause .= " AND e.start_date >= CURRENT_DATE()";
     
     // 獲取總數用於分頁
     $stmt = $pdo->prepare("
         SELECT COUNT(*) 
         FROM events e 
-        LEFT JOIN event_types t ON e.event_type_id = t.id 
+        LEFT JOIN event_types t ON e.type_id = t.id 
         " . $where_clause
     );
     
@@ -66,11 +165,14 @@ if (isset($_GET['id'])) {
     
     // 獲取活動列表
     $sql = "
-        SELECT e.*, t.name as type_name
+        SELECT e.*, t.name as type_name,
+            (SELECT COALESCE(SUM(participants), 0) 
+             FROM event_registrations 
+             WHERE event_id = e.id AND status = 1) as current_participants
         FROM events e 
-        LEFT JOIN event_types t ON e.event_type_id = t.id 
+        LEFT JOIN event_types t ON e.type_id = t.id 
         {$where_clause} 
-        ORDER BY e.event_date ASC 
+        ORDER BY e.start_date ASC 
         LIMIT :offset, :limit
     ";
     
@@ -87,15 +189,6 @@ if (isset($_GET['id'])) {
     $stmt->execute();
     $events_list = $stmt->fetchAll();
 }
-
-// 獲取活動類型列表
-$stmt = $pdo->query("
-    SELECT DISTINCT et.name as event_type 
-    FROM events e 
-    JOIN event_types et ON e.event_type_id = et.id 
-    WHERE e.status = 'published'
-");
-$event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -121,11 +214,11 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     <div class="event-meta">
                         <span class="date">
                             <i class="fas fa-calendar"></i> 
-                            <?php echo date('Y/m/d', strtotime($event['event_date'])); ?>
+                            <?php echo date('Y/m/d', strtotime($event['start_date'])); ?>
                         </span>
                         <span class="time">
                             <i class="fas fa-clock"></i> 
-                            <?php echo date('H:i', strtotime($event['event_time'])); ?>
+                            <?php echo date('H:i', strtotime($event['start_date'])); ?>
                         </span>
                         <span class="location">
                             <i class="fas fa-map-marker-alt"></i> 
@@ -212,11 +305,11 @@ $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                 <div class="event-meta">
                                     <span class="date">
                                         <i class="fas fa-calendar"></i> 
-                                        <?php echo date('Y/m/d', strtotime($item['event_date'])); ?>
+                                        <?php echo date('Y/m/d', strtotime($item['start_date'])); ?>
                                     </span>
                                     <span class="time">
                                         <i class="fas fa-clock"></i> 
-                                        <?php echo date('H:i', strtotime($item['event_time'])); ?>
+                                        <?php echo date('H:i', strtotime($item['start_date'])); ?>
                                     </span>
                                     <span class="location">
                                         <i class="fas fa-map-marker-alt"></i> 
