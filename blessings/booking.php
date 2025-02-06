@@ -81,15 +81,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             INSERT INTO blessings (
                 type_id, user_id, recipient_name, recipient_birthdate,
                 recipient_gender, recipient_phone, recipient_address,
-                recipient_email, blessing_date, preferred_time,
-                special_requests, emergency_contact, emergency_phone,
+                recipient_email, blessing_date, special_requests, 
+                emergency_contact, emergency_phone,
                 amount, payment_status, blessing_status,
                 created_at, updated_at
             ) VALUES (
                 ?, ?, ?, ?,
                 ?, ?, ?,
                 ?, ?, ?,
-                ?, ?, ?,
+                ?, ?,
                 ?, 'pending', 'pending',
                 NOW(), NOW()
             )
@@ -105,7 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST['recipient_address'] ?: null,
             $_POST['recipient_email'] ?: null,
             $_POST['blessing_date'],
-            $_POST['preferred_time'] ?: null,
             $_POST['special_requests'] ?: null,
             $_POST['emergency_contact'] ?: null,
             $_POST['emergency_phone'] ?: null,
@@ -217,18 +216,6 @@ $time_slots = $stmt->fetchAll();
                                 <label for="blessing_date" class="form-label">預約日期 <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" id="blessing_date" name="blessing_date" 
                                        min="<?php echo date('Y-m-d'); ?>" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="preferred_time" class="form-label">偏好時段</label>
-                                <select class="form-select" id="preferred_time" name="preferred_time">
-                                    <option value="">請選擇</option>
-                                    <?php foreach ($time_slots as $slot): ?>
-                                        <option value="<?php echo date('H:i', strtotime($slot['start_time'])); ?>">
-                                            <?php echo date('H:i', strtotime($slot['start_time'])); ?> - 
-                                            <?php echo date('H:i', strtotime($slot['end_time'])); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
                             </div>
                             <div class="col-12">
                                 <label for="special_requests" class="form-label">特殊需求</label>
