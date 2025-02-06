@@ -59,7 +59,7 @@
         <div class="news-list">
             <?php
             // 從資料庫獲取最新的兩則新聞
-            $stmt = $db->prepare("SELECT * FROM news WHERE status = 'published' ORDER BY publish_date DESC LIMIT 2");
+            $stmt = $pdo->prepare("SELECT * FROM news WHERE status = 'published' ORDER BY publish_date DESC LIMIT 2");
             $stmt->execute();
             $latest_news = $stmt->fetchAll();
 
