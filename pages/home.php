@@ -1,3 +1,6 @@
+
+<link rel="stylesheet" href="assets/css/home.css">
+
 <div class="container">
     <!-- 輪播圖區域 -->
     <section class="slider-section">
@@ -98,103 +101,111 @@
     <!-- 祈福服務區域 -->
     <section class="services-section">
         <h2 class="section-title">祈福服務</h2>
-        <div class="services-grid grid-4">
+        <div class="services-grid">
             <div class="service-item">
                 <div class="service-icon">
                     <i class="fas fa-pray"></i>
                 </div>
                 <h3>安太歲</h3>
                 <p>為信眾安奉太歲，祈求平安順遂</p>
-                <a href="services.php?type=taisui" class="btn btn-outline">了解更多</a>
+                <div class="service-meta">
+                    <span><i class="fas fa-dollar-sign"></i> NT$600起</span>
+                </div>
+                <a href="blessings/booking.php?type=taisui" class="btn btn-outline">立即預約</a>
             </div>
             <div class="service-item">
                 <div class="service-icon">
-                    <i class="fas fa-fire"></i>
+                    <i class="fas fa-fire-alt"></i>
                 </div>
-                <h3>點光明燈</h3>
+                <h3>光明燈</h3>
                 <p>為信眾點燈祈福，照亮前程</p>
-                <a href="services.php?type=light" class="btn btn-outline">了解更多</a>
+                <div class="service-meta">
+                    <span><i class="fas fa-dollar-sign"></i> NT$1,200起</span>
+                </div>
+                <a href="blessings/booking.php?type=light" class="btn btn-outline">立即預約</a>
             </div>
             <div class="service-item">
                 <div class="service-icon">
-                    <i class="fas fa-book"></i>
+                    <i class="fas fa-hand-holding-heart"></i>
                 </div>
-                <h3>祈福法會</h3>
-                <p>舉辦各類法會，消災解厄</p>
-                <a href="services.php?type=ceremony" class="btn btn-outline">了解更多</a>
+                <h3>平安祈福</h3>
+                <p>為信眾消災解厄，祈求平安</p>
+                <div class="service-meta">
+                    <span><i class="fas fa-dollar-sign"></i> NT$800起</span>
+                </div>
+                <a href="blessings/booking.php?type=peace" class="btn btn-outline">立即預約</a>
             </div>
             <div class="service-item">
                 <div class="service-icon">
                     <i class="fas fa-heart"></i>
                 </div>
-                <h3>婚姻締結</h3>
-                <p>為新人舉行祝福儀式</p>
-                <a href="services.php?type=wedding" class="btn btn-outline">了解更多</a>
+                <h3>姻緣祈福</h3>
+                <p>為信眾祈求良緣，圓滿姻緣</p>
+                <div class="service-meta">
+                    <span><i class="fas fa-dollar-sign"></i> NT$1,000起</span>
+                </div>
+                <a href="blessings/booking.php?type=marriage" class="btn btn-outline">立即預約</a>
             </div>
+        </div>
+        <div class="text-center" style="margin-top: 2rem;">
+            <a href="blessings/" class="btn btn-primary">查看更多服務</a>
         </div>
     </section>
 
     <!-- 活動資訊區域 -->
     <section class="events-section">
         <h2 class="section-title">近期活動</h2>
-        <div class="events-grid grid-3">
-            <div class="event-item">
-                <div class="event-image">
-                    <img src="assets/images/event1.jpg" alt="浴佛節">
-                </div>
-                <div class="event-content">
-                    <div class="event-date">
-                        <span class="day">15</span>
-                        <span class="month">5月</span>
+        <div class="events-grid">
+            <?php
+            // 從資料庫獲取最新的三個活動
+            $stmt = $pdo->prepare("
+                SELECT *, 
+                    DATE_FORMAT(start_date, '%Y-%m-%d') as formatted_date,
+                    TIME_FORMAT(start_date, '%H:%i') as formatted_time
+                FROM events 
+                WHERE status = 1 
+                AND start_date >= CURDATE() 
+                ORDER BY start_date ASC 
+                LIMIT 3
+            ");
+            $stmt->execute();
+            $upcoming_events = $stmt->fetchAll();
+
+            if (!empty($upcoming_events)):
+                foreach ($upcoming_events as $event):
+                    $event_date = new DateTime($event['start_date']);
+            ?>
+                <div class="event-item">
+                    <div class="event-image">
+                        <img src="<?php echo !empty($event['image']) ? htmlspecialchars($event['image']) : 'assets/images/default-event.jpg'; ?>" 
+                             alt="<?php echo htmlspecialchars($event['title']); ?>">
                     </div>
-                    <h3>浴佛節慶典</h3>
-                    <p>一年一度的浴佛節即將到來，歡迎大眾參加浴佛儀式...</p>
-                    <div class="event-meta">
-                        <span><i class="fas fa-clock"></i> 09:00-17:00</span>
-                        <span><i class="fas fa-map-marker-alt"></i> 大殿</span>
+                    <div class="event-content">
+                        <div class="event-date">
+                            <span class="day"><?php echo $event_date->format('d'); ?></span>
+                            <span class="month"><?php echo $event_date->format('m'); ?>月</span>
+                        </div>
+                        <h3><?php echo htmlspecialchars($event['title']); ?></h3>
+                        <p><?php echo mb_substr(strip_tags($event['description']), 0, 50, 'UTF-8') . '...'; ?></p>
+                        <div class="event-meta">
+                            <span><i class="fas fa-clock"></i> <?php echo $event['formatted_time']; ?></span>
+                            <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($event['location']); ?></span>
+                        </div>
+                        <a href="events.php?id=<?php echo $event['id']; ?>" class="btn btn-outline">活動詳情</a>
                     </div>
-                    <a href="events.php?id=1" class="btn btn-outline">活動詳情</a>
                 </div>
-            </div>
-            <div class="event-item">
-                <div class="event-image">
-                    <img src="assets/images/event2.jpg" alt="讀經班">
+            <?php 
+                endforeach;
+            else:
+            ?>
+                <div class="no-events">
+                    <p>目前沒有近期活動</p>
                 </div>
-                <div class="event-content">
-                    <div class="event-date">
-                        <span class="day">20</span>
-                        <span class="month">5月</span>
-                    </div>
-                    <h3>兒童讀經班開課</h3>
-                    <p>每週日上午舉辦兒童讀經班，培養孩子良好品德...</p>
-                    <div class="event-meta">
-                        <span><i class="fas fa-clock"></i> 10:00-12:00</span>
-                        <span><i class="fas fa-map-marker-alt"></i> 文教室</span>
-                    </div>
-                    <a href="events.php?id=2" class="btn btn-outline">活動詳情</a>
-                </div>
-            </div>
-            <div class="event-item">
-                <div class="event-image">
-                    <img src="assets/images/event3.jpg" alt="淨灘活動">
-                </div>
-                <div class="event-content">
-                    <div class="event-date">
-                        <span class="day">25</span>
-                        <span class="month">5月</span>
-                    </div>
-                    <h3>環保淨灘活動</h3>
-                    <p>響應環保，舉辦淨灘活動，歡迎大眾共同參與...</p>
-                    <div class="event-meta">
-                        <span><i class="fas fa-clock"></i> 08:00-12:00</span>
-                        <span><i class="fas fa-map-marker-alt"></i> 海灘</span>
-                    </div>
-                    <a href="events.php?id=3" class="btn btn-outline">活動詳情</a>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
-        <div class="text-center">
+        <div class="text-center" style="margin-top: 2rem;">
             <a href="events.php" class="btn btn-primary">查看更多活動</a>
         </div>
     </section>
-</div> 
+</div>
+
