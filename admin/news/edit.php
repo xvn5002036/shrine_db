@@ -1,177 +1,131 @@
 <?php
-session_start();
 require_once '../../config/config.php';
+require_once '../../config/database.php';
 require_once '../../includes/functions.php';
 
-// 檢查管理員是否登入
-if (!isset($_SESSION['admin_logged_in']) || !$_SESSION['admin_logged_in']) {
-    setFlashMessage('error', '請先登入');
-    header('Location: /admin/login.php');
+// 檢查管理員是否已登入
+checkAdminLogin();
+
+// 獲取新聞 ID
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if (!$id) {
+    header('Location: index.php');
     exit;
 }
 
-// 獲取全域 PDO 實例
-$pdo = $GLOBALS['pdo'];
+// 初始化變數
+$error = '';
+$success = false;
 
-// 檢查是否有提供 ID
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    setFlashMessage('error', '未指定新聞 ID');
-    header('Location: /admin/news/index.php');
-    exit;
-}
-
-$id = (int)$_GET['id'];
-
-// Debug 資訊
-error_log("Accessing edit.php with ID: " . $id);
-
-// 獲取新聞資料
 try {
-    // 先檢查新聞是否存在
-    $check_sql = "SELECT COUNT(*) FROM news WHERE id = :id";
-    $check_stmt = $pdo->prepare($check_sql);
-    $check_stmt->execute([':id' => $id]);
-    
-    if ($check_stmt->fetchColumn() == 0) {
-        setFlashMessage('error', '找不到指定的新聞');
-        header('Location: /admin/news/index.php');
+    // 獲取新聞資料
+    $stmt = $pdo->prepare("
+        SELECT n.*, nc.name as category_name 
+        FROM news n 
+        LEFT JOIN news_categories nc ON n.category_id = nc.id 
+        WHERE n.id = ?
+    ");
+    $stmt->execute([$id]);
+    $news = $stmt->fetch();
+
+    if (!$news) {
+        header('Location: index.php');
         exit;
     }
-
-    // 獲取新聞詳細資料
-    $sql = "
-        SELECT n.* 
-        FROM news n 
-        WHERE n.id = :id
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':id' => $id]);
-    $news = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Debug 資訊
-    error_log("Found news: " . print_r($news, true));
 
     // 獲取新聞分類列表
-    $categories_sql = "SELECT id, name FROM news_categories ORDER BY name";
-    $categories = $pdo->query($categories_sql)->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $pdo->query("SELECT id, name FROM news_categories ORDER BY name");
+    $categories = $stmt->fetchAll();
 
-} catch (PDOException $e) {
-    error_log('Error in edit.php: ' . $e->getMessage());
-    error_log('SQL State: ' . $e->errorInfo[0]);
-    error_log('Error Code: ' . $e->errorInfo[1]);
-    error_log('Error Message: ' . $e->errorInfo[2]);
-    
-    setFlashMessage('error', '系統錯誤，請稍後再試');
-    header('Location: /admin/news/index.php');
-    exit;
-}
-
-// 處理表單提交
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        // 開始交易
-        $pdo->beginTransaction();
-
-        // 準備更新數據
+    // 處理表單提交
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
+        $category_id = trim($_POST['category_id'] ?? '');
         $content = trim($_POST['content'] ?? '');
         $status = trim($_POST['status'] ?? 'draft');
-        $publish_date = trim($_POST['publish_date'] ?? date('Y-m-d H:i:s'));
-        $category_id = (int)($_POST['category_id'] ?? 0);
-
-        // Debug 資訊
-        error_log("POST data: " . print_r($_POST, true));
-
-        // 驗證必填欄位
-        if (empty($title) || empty($content)) {
-            throw new Exception('標題和內容為必填項目');
-        }
-
-        // 處理圖片上傳
-        $image_path = null;
-        if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = '../../uploads/news/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
+        
+        // 驗證
+        if (empty($title)) {
+            $error = '請輸入標題';
+        } elseif (empty($content)) {
+            $error = '請輸入內容';
+        } else {
+            try {
+                // 處理圖片上傳
+                $image_path = $news['image'];
+                if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+                    $max_size = 5 * 1024 * 1024; // 5MB
+                    
+                    if (!in_array($_FILES['image']['type'], $allowed_types)) {
+                        throw new Exception('只允許上傳 JPG、PNG 或 GIF 圖片');
+                    }
+                    
+                    if ($_FILES['image']['size'] > $max_size) {
+                        throw new Exception('圖片大小不能超過 5MB');
+                    }
+                    
+                    $upload_dir = '../../uploads/news/';
+                    if (!file_exists($upload_dir)) {
+                        mkdir($upload_dir, 0777, true);
+                    }
+                    
+                    $extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+                    $filename = uniqid() . '.' . $extension;
+                    $new_image_path = 'uploads/news/' . $filename;
+                    
+                    if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_dir . $filename)) {
+                        // 如果上傳成功，刪除舊圖片
+                        if ($image_path && file_exists('../../' . $image_path)) {
+                            unlink('../../' . $image_path);
+                        }
+                        $image_path = $new_image_path;
+                    }
+                }
+                
+                // 更新新聞
+                $stmt = $pdo->prepare("
+                    UPDATE news 
+                    SET title = ?, category_id = ?, content = ?, image = ?, status = ?, updated_at = NOW()
+                    WHERE id = ?
+                ");
+                
+                $stmt->execute([
+                    $title,
+                    $category_id ?: null,
+                    $content,
+                    $image_path,
+                    $status,
+                    $id
+                ]);
+                
+                $success = true;
+                
+                // 重新獲取新聞資料
+                $stmt = $pdo->prepare("
+                    SELECT n.*, nc.name as category_name 
+                    FROM news n 
+                    LEFT JOIN news_categories nc ON n.category_id = nc.id 
+                    WHERE n.id = ?
+                ");
+                $stmt->execute([$id]);
+                $news = $stmt->fetch();
+                
+            } catch (Exception $e) {
+                error_log('Error updating news: ' . $e->getMessage());
+                $error = '更新消息時發生錯誤：' . $e->getMessage();
+                
+                // 如果上傳失敗，刪除已上傳的新圖片
+                if (isset($new_image_path) && file_exists('../../' . $new_image_path)) {
+                    unlink('../../' . $new_image_path);
+                }
             }
-
-            $file_extension = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
-            $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
-
-            if (!in_array($file_extension, $allowed_extensions)) {
-                throw new Exception('只允許上傳 JPG、JPEG、PNG 或 GIF 格式的圖片');
-            }
-
-            $new_filename = uniqid('news_') . '.' . $file_extension;
-            $upload_path = $upload_dir . $new_filename;
-
-            if (!move_uploaded_file($_FILES['image']['tmp_name'], $upload_path)) {
-                throw new Exception('圖片上傳失敗');
-            }
-
-            $image_path = 'uploads/news/' . $new_filename;
-
-            // 刪除舊圖片
-            $stmt = $pdo->prepare("SELECT image FROM news WHERE id = ?");
-            $stmt->execute([$id]);
-            $old_image = $stmt->fetchColumn();
-
-            if ($old_image && file_exists('../../' . $old_image)) {
-                unlink('../../' . $old_image);
-            }
         }
-
-        // 更新新聞
-        $sql = "
-            UPDATE news 
-            SET title = :title,
-                content = :content,
-                status = :status,
-                publish_date = :publish_date,
-                category_id = :category_id,
-                updated_at = NOW(),
-                updated_by = :updated_by
-        ";
-
-        if ($image_path !== null) {
-            $sql .= ", image = :image";
-        }
-
-        $sql .= " WHERE id = :id";
-
-        $stmt = $pdo->prepare($sql);
-        $params = [
-            ':title' => $title,
-            ':content' => $content,
-            ':status' => $status,
-            ':publish_date' => $publish_date,
-            ':category_id' => $category_id,
-            ':updated_by' => $_SESSION['admin_id'],
-            ':id' => $id
-        ];
-
-        if ($image_path !== null) {
-            $params[':image'] = $image_path;
-        }
-
-        $stmt->execute($params);
-
-        // 記錄管理員操作
-        logAdminAction('update_news', "更新新聞 ID: {$id}");
-
-        // 提交交易
-        $pdo->commit();
-
-        setFlashMessage('success', '新聞更新成功');
-        header('Location: /admin/news/index.php');
-        exit;
-
-    } catch (Exception $e) {
-        // 回滾交易
-        $pdo->rollBack();
-        error_log('Error updating news: ' . $e->getMessage());
-        setFlashMessage('error', '更新失敗：' . $e->getMessage());
     }
+} catch (PDOException $e) {
+    error_log('Error: ' . $e->getMessage());
+    $error = '系統錯誤：' . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
@@ -179,30 +133,144 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>編輯新聞 - <?php echo htmlspecialchars(SITE_NAME); ?></title>
+    <title>編輯消息 - <?php echo SITE_NAME; ?></title>
     <link rel="stylesheet" href="../../assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <!-- TinyMCE -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js"></script>
-    <script>
-        tinymce.init({
-            selector: '#content',
-            height: 500,
-            menubar: false,
-            plugins: [
-                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
-                'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                'insertdatetime', 'table', 'wordcount'
-            ],
-            toolbar: 'undo redo | formatselect | ' +
-                'bold italic forecolor backcolor | alignleft aligncenter ' +
-                'alignright alignjustify | bullist numlist outdent indent | ' +
-                'removeformat',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }',
-            language_url: 'https://cdn.jsdelivr.net/npm/tinymce-lang/langs/zh_TW.js',
-            language: 'zh_TW'
-        });
-    </script>
+    <!-- 引入 CKEditor -->
+    <script src="https://cdn.ckeditor.com/ckeditor5/27.1.0/classic/ckeditor.js"></script>
+    <style>
+        /* 修正版面配置 */
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+            padding-left: 250px; /* 側邊欄寬度 */
+            position: relative;
+        }
+
+        .admin-main {
+            flex: 1;
+            padding: 20px;
+            margin-left: 0;
+            width: calc(100% - 250px); /* 扣除側邊欄寬度 */
+            box-sizing: border-box;
+        }
+
+        .content {
+            padding: 20px;
+            margin-top: 60px; /* 為頂部導航預留空間 */
+        }
+
+        /* 表單樣式 */
+        .form-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            border-color: #4a90e2;
+            outline: none;
+        }
+
+        /* CKEditor 樣式修正 */
+        .ck-editor__editable {
+            min-height: 300px;
+        }
+
+        /* 圖片預覽 */
+        .image-preview {
+            margin-top: 10px;
+            max-width: 300px;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        /* 按鈕樣式 */
+        .form-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .admin-container {
+                padding-left: 0;
+            }
+
+            .admin-main {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .content {
+                padding: 10px;
+            }
+        }
+    </style>
 </head>
 <body class="admin-page">
     <div class="admin-container">
@@ -211,97 +279,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <main class="admin-main">
             <?php include '../includes/header.php'; ?>
             
-            <div class="admin-content">
+            <div class="content">
                 <div class="content-header">
-                    <h2>編輯新聞</h2>
-                    <div class="breadcrumb">
+                    <h2>編輯消息</h2>
+                    <nav class="breadcrumb">
                         <a href="../index.php">首頁</a> /
                         <a href="index.php">新聞管理</a> /
-                        <span>編輯新聞</span>
-                    </div>
+                        <span>編輯消息</span>
+                    </nav>
                 </div>
 
-                <div class="content-body">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>編輯新聞內容</h3>
+                <?php if ($error): ?>
+                    <div class="alert alert-danger"><?php echo $error; ?></div>
+                <?php endif; ?>
+
+                <?php if ($success): ?>
+                    <div class="alert alert-success">消息更新成功！</div>
+                <?php endif; ?>
+
+                <div class="form-container">
+                    <form method="post" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="title">標題</label>
+                            <input type="text" id="title" name="title" class="form-control" 
+                                   value="<?php echo htmlspecialchars($news['title']); ?>" required>
                         </div>
-                        <div class="card-body">
-                            <?php display_flash_messages(); ?>
-
-                            <form action="edit.php?id=<?php echo $id; ?>" method="post" enctype="multipart/form-data" class="form">
-                                <div class="form-group">
-                                    <label for="title">標題 <span class="required">*</span></label>
-                                    <input type="text" id="title" name="title" required
-                                           value="<?php echo htmlspecialchars($news['title']); ?>"
-                                           class="form-control">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="category_id">分類</label>
-                                    <select id="category_id" name="category_id" class="form-control">
-                                        <option value="0">-- 請選擇分類 --</option>
-                                        <?php foreach ($categories as $category): ?>
-                                            <option value="<?php echo $category['id']; ?>"
-                                                    <?php echo $category['id'] == $news['category_id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($category['name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="content">內容 <span class="required">*</span></label>
-                                    <textarea id="content" name="content" required
-                                              class="form-control"><?php echo htmlspecialchars($news['content']); ?></textarea>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="image">圖片</label>
-                                    <?php if (!empty($news['image'])): ?>
-                                        <div class="current-image">
-                                            <img src="../../<?php echo htmlspecialchars($news['image']); ?>" 
-                                                 alt="當前圖片" style="max-width: 200px;">
-                                            <p>當前圖片</p>
-                                        </div>
-                                    <?php endif; ?>
-                                    <input type="file" id="image" name="image" accept="image/*" class="form-control">
-                                    <small class="form-text text-muted">
-                                        支援的格式：JPG、JPEG、PNG、GIF。若不上傳新圖片則保留原圖。
-                                    </small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="status">狀態</label>
-                                    <select id="status" name="status" class="form-control">
-                                        <option value="draft" <?php echo $news['status'] === 'draft' ? 'selected' : ''; ?>>草稿</option>
-                                        <option value="published" <?php echo $news['status'] === 'published' ? 'selected' : ''; ?>>發布</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="publish_date">發布日期</label>
-                                    <input type="datetime-local" id="publish_date" name="publish_date"
-                                           value="<?php echo date('Y-m-d\TH:i', strtotime($news['publish_date'] ?? 'now')); ?>"
-                                           class="form-control">
-                                </div>
-
-                                <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> 儲存
-                                    </button>
-                                    <a href="index.php" class="btn btn-secondary">
-                                        <i class="fas fa-times"></i> 取消
-                                    </a>
-                                </div>
-                            </form>
+                        
+                        <div class="form-group">
+                            <label for="category_id">分類</label>
+                            <select id="category_id" name="category_id" class="form-control">
+                                <option value="">選擇分類</option>
+                                <?php foreach ($categories as $category): ?>
+                                    <option value="<?php echo $category['id']; ?>" 
+                                            <?php echo $news['category_id'] == $category['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($category['name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
-                    </div>
+                        
+                        <div class="form-group">
+                            <label for="content">內容</label>
+                            <textarea id="content" name="content" class="form-control" required>
+                                <?php echo htmlspecialchars($news['content']); ?>
+                            </textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="image">圖片</label>
+                            <input type="file" id="image" name="image" class="form-control" accept="image/*">
+                            <?php if ($news['image']): ?>
+                                <div class="image-preview">
+                                    <img src="../../<?php echo htmlspecialchars($news['image']); ?>" alt="新聞圖片">
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="status">狀態</label>
+                            <select id="status" name="status" class="form-control">
+                                <option value="draft" <?php echo $news['status'] === 'draft' ? 'selected' : ''; ?>>草稿</option>
+                                <option value="published" <?php echo $news['status'] === 'published' ? 'selected' : ''; ?>>已發布</option>
+                                <option value="archived" <?php echo $news['status'] === 'archived' ? 'selected' : ''; ?>>已封存</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 儲存變更
+                            </button>
+                            <a href="index.php" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> 取消
+                            </a>
+                        </div>
+                    </form>
                 </div>
             </div>
         </main>
     </div>
 
-    <script src="../../assets/js/admin.js"></script>
+    <script>
+        // 初始化 CKEditor
+        ClassicEditor
+            .create(document.querySelector('#content'))
+            .catch(error => {
+                console.error(error);
+            });
+    </script>
 </body>
 </html> 

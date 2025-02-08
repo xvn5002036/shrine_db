@@ -27,12 +27,13 @@ if (!$event_id) {
 }
 
 try {
-    // 獲取活動詳情
+    // 檢查活動是否存在且可以報名
     $stmt = $db->prepare("
         SELECT * FROM events 
-        WHERE id = ? AND status = 1 
-        AND registration_start_date <= NOW() 
-        AND registration_end_date >= NOW()
+        WHERE id = ? 
+        AND status = 1 
+        AND (registration_deadline IS NULL OR registration_deadline >= NOW())
+        AND end_date >= NOW()
     ");
     $stmt->execute([$event_id]);
     $event = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -152,7 +153,12 @@ require_once 'templates/header.php';
                             </li>
                             <li class="mb-3">
                                 <i class="fas fa-clock text-primary me-2"></i>
-                                報名截止：<?php echo date('Y/m/d', strtotime($event['registration_end_date'])); ?>
+                                報名截止：
+                                <?php if ($event['registration_deadline']): ?>
+                                    <?php echo date('Y/m/d', strtotime($event['registration_deadline'])); ?>
+                                <?php else: ?>
+                                    活動開始前皆可報名
+                                <?php endif; ?>
                             </li>
                         </ul>
                     </div>

@@ -471,23 +471,29 @@ function displayFlashMessages() {
 /**
  * 記錄管理員操作日誌
  */
-function logAdminAction($action, $details = '') {
+function logAdminAction($action, $description = '') {
     global $pdo;
     
     try {
         $stmt = $pdo->prepare("
-            INSERT INTO admin_logs (admin_id, action, details, ip_address, created_at)
-            VALUES (:admin_id, :action, :details, :ip_address, NOW())
+            INSERT INTO admin_logs (
+                admin_id, action, description, ip_address, created_at
+            ) VALUES (
+                :admin_id, :action, :description, :ip_address, NOW()
+            )
         ");
         
         $stmt->execute([
-            ':admin_id' => $_SESSION['admin_id'] ?? 0,
+            ':admin_id' => $_SESSION['admin_id'],
             ':action' => $action,
-            ':details' => $details,
+            ':description' => $description,
             ':ip_address' => $_SERVER['REMOTE_ADDR']
         ]);
+        
+        return true;
     } catch (PDOException $e) {
-        error_log('記錄管理員操作時發生錯誤：' . $e->getMessage());
+        error_log('記錄管理員操作失敗：' . $e->getMessage());
+        return false;
     }
 }
 
@@ -510,4 +516,33 @@ function formatFileSize($bytes, $decimals = 2) {
     $size = array('B','KB','MB','GB','TB','PB','EB','ZB','YB');
     $factor = floor((strlen($bytes) - 1) / 3);
     return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . ' ' . @$size[$factor];
+}
+
+// 獲取當前頁面名稱
+function getCurrentPage() {
+    $path = $_SERVER['PHP_SELF'];
+    $pathInfo = pathinfo($path);
+    $currentDir = basename(dirname($path));
+    
+    if ($currentDir === 'admin') {
+        return 'index';
+    }
+    
+    return $currentDir;
+}
+
+// 獲取頁面標題
+function getPageTitle() {
+    $page = getCurrentPage();
+    $titles = [
+        'index' => '控制台',
+        'news' => '最新消息管理',
+        'events' => '活動管理',
+        'blessings' => '祈福服務管理',
+        'gallery' => '圖片管理',
+        'users' => '用戶管理',
+        'settings' => '系統設定'
+    ];
+    
+    return $titles[$page] ?? '後台管理';
 } 

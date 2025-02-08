@@ -1,102 +1,122 @@
 <?php
 require_once '../../config/config.php';
+require_once '../../config/database.php';
 require_once '../../includes/functions.php';
 
 // 檢查管理員是否已登入
 checkAdminLogin();
 
-// 獲取全域 PDO 實例
-$pdo = $GLOBALS['pdo'];
+// 初始化變數
+$error = '';
+$success = false;
 
-// 處理表單提交
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = trim($_POST['title'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $event_date = $_POST['event_date'] ?? '';
-    $event_time = $_POST['event_time'] ?? '';
-    $location = trim($_POST['location'] ?? '');
-    $max_participants = (int)($_POST['max_participants'] ?? 0);
-    $status = $_POST['status'] ?? 'draft';
-    $errors = [];
+try {
+    // 獲取活動類型列表
+    $stmt = $pdo->query("SELECT id, name FROM event_types WHERE status = 'active' ORDER BY sort_order");
+    $event_types = $stmt->fetchAll();
 
-    // 驗證表單
-    if (empty($title)) {
-        $errors[] = '活動名稱不能為空';
-    }
-    if (empty($description)) {
-        $errors[] = '活動描述不能為空';
-    }
-    if (empty($event_date)) {
-        $errors[] = '活動日期不能為空';
-    }
-    if (empty($event_time)) {
-        $errors[] = '活動時間不能為空';
-    }
-    if (empty($location)) {
-        $errors[] = '活動地點不能為空';
-    }
-
-    // 處理圖片上傳
-    $image_path = '';
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-        $max_size = 5 * 1024 * 1024; // 5MB
-
-        if (!in_array($_FILES['image']['type'], $allowed_types)) {
-            $errors[] = '只允許上傳 JPG、PNG 或 GIF 格式的圖片';
-        } elseif ($_FILES['image']['size'] > $max_size) {
-            $errors[] = '圖片大小不能超過 5MB';
+    // 處理表單提交
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $title = trim($_POST['title'] ?? '');
+        $event_type_id = trim($_POST['event_type_id'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $location = trim($_POST['location'] ?? '');
+        $start_date = trim($_POST['start_date'] ?? '');
+        $start_time = trim($_POST['start_time'] ?? '');
+        $end_date = trim($_POST['end_date'] ?? '');
+        $end_time = trim($_POST['end_time'] ?? '');
+        $registration_deadline_date = trim($_POST['registration_deadline_date'] ?? '');
+        $registration_deadline_time = trim($_POST['registration_deadline_time'] ?? '');
+        $max_participants = trim($_POST['max_participants'] ?? '');
+        
+        // 驗證
+        if (empty($title)) {
+            $error = '請輸入活動標題';
+        } elseif (empty($event_type_id)) {
+            $error = '請選擇活動類型';
+        } elseif (empty($description)) {
+            $error = '請輸入活動說明';
+        } elseif (empty($location)) {
+            $error = '請輸入活動地點';
+        } elseif (empty($start_date) || empty($start_time)) {
+            $error = '請輸入開始日期和時間';
+        } elseif (empty($end_date) || empty($end_time)) {
+            $error = '請輸入結束日期和時間';
         } else {
-            $upload_dir = '../../uploads/events/';
-            if (!file_exists($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-
-            $filename = uniqid() . '_' . basename($_FILES['image']['name']);
-            $image_path = 'uploads/events/' . $filename;
-
-            if (!move_uploaded_file($_FILES['image']['tmp_name'], $upload_dir . $filename)) {
-                $errors[] = '圖片上傳失敗';
+            try {
+                // 處理圖片上傳
+                $image_path = null;
+                if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+                    $max_size = 5 * 1024 * 1024; // 5MB
+                    
+                    if (!in_array($_FILES['image']['type'], $allowed_types)) {
+                        throw new Exception('只允許上傳 JPG、PNG 或 GIF 圖片');
+                    }
+                    
+                    if ($_FILES['image']['size'] > $max_size) {
+                        throw new Exception('圖片大小不能超過 5MB');
+                    }
+                    
+                    $upload_dir = '../../uploads/events/';
+                    if (!file_exists($upload_dir)) {
+                        mkdir($upload_dir, 0777, true);
+                    }
+                    
+                    $extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+                    $filename = uniqid() . '.' . $extension;
+                    $image_path = 'uploads/events/' . $filename;
+                    
+                    if (!move_uploaded_file($_FILES['image']['tmp_name'], $upload_dir . $filename)) {
+                        throw new Exception('圖片上傳失敗');
+                    }
+                }
+                
+                // 組合日期時間
+                $start_datetime = $start_date . ' ' . $start_time;
+                $end_datetime = $end_date . ' ' . $end_time;
+                $registration_deadline = $registration_deadline_date . ' ' . $registration_deadline_time;
+                
+                // 新增活動
+                $stmt = $pdo->prepare("
+                    INSERT INTO events (
+                        event_type_id, title, description, image, location,
+                        start_date, end_date, registration_deadline,
+                        max_participants, created_by
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                ");
+                
+                $stmt->execute([
+                    $event_type_id,
+                    $title,
+                    $description,
+                    $image_path,
+                    $location,
+                    $start_datetime,
+                    $end_datetime,
+                    $registration_deadline,
+                    $max_participants ?: null,
+                    $_SESSION['admin_id']
+                ]);
+                
+                $success = true;
+                
+            } catch (Exception $e) {
+                error_log('Error adding event: ' . $e->getMessage());
+                $error = '新增活動時發生錯誤：' . $e->getMessage();
+                
+                // 如果上傳失敗，刪除已上傳的圖片
+                if (isset($image_path) && file_exists('../../' . $image_path)) {
+                    unlink('../../' . $image_path);
+                }
             }
         }
     }
-
-    // 如果沒有錯誤，保存活動
-    if (empty($errors)) {
-        try {
-            $stmt = $pdo->prepare("
-                INSERT INTO events (
-                    title, description, event_date, event_time, location, 
-                    max_participants, image, status, created_by, created_at
-                ) VALUES (
-                    :title, :description, :event_date, :event_time, :location,
-                    :max_participants, :image, :status, :created_by, NOW()
-                )
-            ");
-
-            $stmt->execute([
-                ':title' => $title,
-                ':description' => $description,
-                ':event_date' => $event_date,
-                ':event_time' => $event_time,
-                ':location' => $location,
-                ':max_participants' => $max_participants,
-                ':image' => $image_path,
-                ':status' => $status,
-                ':created_by' => $_SESSION['admin_id']
-            ]);
-
-            // 記錄操作日誌
-            logAdminAction('新增活動', "新增活動：{$title}");
-
-            // 設置成功消息
-            setFlashMessage('success', '活動新增成功！');
-            header('Location: index.php');
-            exit;
-        } catch (PDOException $e) {
-            $errors[] = '保存失敗：' . $e->getMessage();
-        }
-    }
+} catch (PDOException $e) {
+    error_log('Error: ' . $e->getMessage());
+    $error = '系統錯誤：' . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
@@ -104,13 +124,138 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars(SITE_NAME); ?> - 新增活動</title>
+    <title>新增活動 - <?php echo SITE_NAME; ?></title>
     <link rel="stylesheet" href="../../assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <!-- Flatpickr -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
+    <style>
+        /* 修正側邊欄和主內容區域的布局 */
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .admin-main {
+            flex: 1;
+            padding: 20px;
+            margin-left: 250px; /* 配合側邊欄寬度 */
+            width: calc(100% - 250px);
+            min-height: 100vh;
+            background-color: #f4f6f9;
+        }
+
+        .content {
+            padding: 20px;
+            margin-top: 60px; /* 為頂部導航預留空間 */
+        }
+
+        /* 表單容器樣式 */
+        .form-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .admin-main {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .content {
+                padding: 10px;
+            }
+
+            .datetime-group {
+                flex-direction: column;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .datetime-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .datetime-group .form-control {
+            flex: 1;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .form-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .image-preview {
+            margin-top: 10px;
+            max-width: 300px;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body class="admin-page">
     <div class="admin-container">
@@ -119,72 +264,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <main class="admin-main">
             <?php include '../includes/header.php'; ?>
             
-            <div class="admin-content">
+            <div class="content">
                 <div class="content-header">
                     <h2>新增活動</h2>
+                    <nav class="breadcrumb">
+                        <a href="../index.php">首頁</a> /
+                        <a href="index.php">活動管理</a> /
+                        <span>新增活動</span>
+                    </nav>
                 </div>
-                
-                <div class="content-card">
-                    <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger">
-                            <?php foreach ($errors as $error): ?>
-                                <p><?php echo htmlspecialchars($error); ?></p>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
 
-                    <form action="add.php" method="post" enctype="multipart/form-data" class="form">
+                <?php if ($error): ?>
+                    <div class="alert alert-danger"><?php echo $error; ?></div>
+                <?php endif; ?>
+
+                <?php if ($success): ?>
+                    <div class="alert alert-success">活動新增成功！</div>
+                <?php endif; ?>
+
+                <div class="form-container">
+                    <form method="post" enctype="multipart/form-data">
                         <div class="form-group">
-                            <label for="title">活動名稱</label>
-                            <input type="text" id="title" name="title" value="<?php echo htmlspecialchars($title ?? ''); ?>" required>
+                            <label for="title">活動標題</label>
+                            <input type="text" id="title" name="title" class="form-control" required>
                         </div>
-
+                        
                         <div class="form-group">
-                            <label for="description">活動描述</label>
-                            <textarea id="description" name="description" rows="5" required><?php echo htmlspecialchars($description ?? ''); ?></textarea>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label for="event_date">活動日期</label>
-                                <input type="text" id="event_date" name="event_date" value="<?php echo htmlspecialchars($event_date ?? ''); ?>" required>
-                            </div>
-
-                            <div class="form-group col-md-6">
-                                <label for="event_time">活動時間</label>
-                                <input type="text" id="event_time" name="event_time" value="<?php echo htmlspecialchars($event_time ?? ''); ?>" required>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="location">活動地點</label>
-                            <input type="text" id="location" name="location" value="<?php echo htmlspecialchars($location ?? ''); ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="max_participants">參加人數上限</label>
-                            <input type="number" id="max_participants" name="max_participants" 
-                                   value="<?php echo htmlspecialchars($max_participants ?? '0'); ?>" min="0">
-                            <small class="form-text">設為 0 表示不限制人數</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="image">活動圖片</label>
-                            <input type="file" id="image" name="image" accept="image/*">
-                            <small class="form-text">支援 JPG、PNG、GIF 格式，最大 5MB</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="status">狀態</label>
-                            <select id="status" name="status">
-                                <option value="draft" <?php echo ($status ?? '') === 'draft' ? 'selected' : ''; ?>>草稿</option>
-                                <option value="published" <?php echo ($status ?? '') === 'published' ? 'selected' : ''; ?>>發布</option>
+                            <label for="event_type_id">活動類型</label>
+                            <select id="event_type_id" name="event_type_id" class="form-control" required>
+                                <option value="">選擇活動類型</option>
+                                <?php foreach ($event_types as $type): ?>
+                                    <option value="<?php echo $type['id']; ?>">
+                                        <?php echo htmlspecialchars($type['name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
-
+                        
+                        <div class="form-group">
+                            <label for="description">活動說明</label>
+                            <textarea id="description" name="description" class="form-control" rows="6" required></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="image">活動圖片</label>
+                            <input type="file" id="image" name="image" class="form-control" accept="image/*">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="location">活動地點</label>
+                            <input type="text" id="location" name="location" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>活動開始時間</label>
+                            <div class="datetime-group">
+                                <input type="date" name="start_date" class="form-control" required>
+                                <input type="time" name="start_time" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>活動結束時間</label>
+                            <div class="datetime-group">
+                                <input type="date" name="end_date" class="form-control" required>
+                                <input type="time" name="end_time" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>報名截止時間</label>
+                            <div class="datetime-group">
+                                <input type="date" name="registration_deadline_date" class="form-control">
+                                <input type="time" name="registration_deadline_time" class="form-control">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="max_participants">活動名額</label>
+                            <input type="number" id="max_participants" name="max_participants" class="form-control" 
+                                   min="0" step="1" placeholder="不限制請留空">
+                        </div>
+                        
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">新增活動</button>
-                            <a href="index.php" class="btn btn-secondary">取消</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 新增活動
+                            </button>
+                            <a href="index.php" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> 取消
+                            </a>
                         </div>
                     </form>
                 </div>
@@ -192,21 +360,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </main>
     </div>
 
-    <script src="../../assets/js/admin.js"></script>
     <script>
-        // 初始化日期選擇器
-        flatpickr("#event_date", {
-            dateFormat: "Y-m-d",
-            locale: "zh-tw"
+        // 圖片預覽
+        document.getElementById('image').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    let preview = document.querySelector('.image-preview');
+                    if (!preview) {
+                        preview = document.createElement('div');
+                        preview.className = 'image-preview';
+                        document.getElementById('image').parentNode.appendChild(preview);
+                    }
+                    preview.innerHTML = `<img src="${e.target.result}" alt="預覽圖片">`;
+                }
+                reader.readAsDataURL(file);
+            }
         });
 
-        // 初始化時間選擇器
-        flatpickr("#event_time", {
-            enableTime: true,
-            noCalendar: true,
-            dateFormat: "H:i",
-            time_24hr: true,
-            locale: "zh-tw"
+        // 表單驗證
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const startDate = new Date(document.querySelector('[name="start_date"]').value + ' ' + document.querySelector('[name="start_time"]').value);
+            const endDate = new Date(document.querySelector('[name="end_date"]').value + ' ' + document.querySelector('[name="end_time"]').value);
+            
+            if (endDate < startDate) {
+                e.preventDefault();
+                alert('結束時間不能早於開始時間');
+            }
         });
     </script>
 </body>

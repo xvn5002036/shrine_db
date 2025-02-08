@@ -1,5 +1,6 @@
 <?php
 require_once 'config/config.php';
+require_once 'config/database.php';
 require_once 'includes/functions.php';
 
 // 設定輸出編碼
@@ -9,185 +10,100 @@ mb_internal_encoding('UTF-8');
 // 獲取全域 PDO 實例
 $pdo = $GLOBALS['pdo'];
 
-// 檢查並創建必要的資料表
-try {
-    // 先刪除子表（events），再刪除父表（event_types）
-    $pdo->exec("SET FOREIGN_KEY_CHECKS = 0"); // 暫時關閉外鍵檢查
-    $pdo->exec("DROP TABLE IF EXISTS events");
-    $pdo->exec("DROP TABLE IF EXISTS event_types");
-    $pdo->exec("SET FOREIGN_KEY_CHECKS = 1"); // 重新開啟外鍵檢查
-
-    // 創建 event_types 表
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS `event_types` (
-            `id` INT PRIMARY KEY AUTO_INCREMENT,
-            `name` VARCHAR(50) NOT NULL,
-            `description` TEXT,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    ");
-
-    // 插入預設活動類型
-    $pdo->exec("
-        INSERT INTO `event_types` (`name`, `description`) VALUES
-        ('宮廟祭典', '重要神明聖誕、祭典活動'),
-        ('節慶活動', '傳統節慶與慶典活動'),
-        ('祈福活動', '平安祈福、消災解厄活動'),
-        ('公益活動', '慈善與社會服務活動')
-    ");
-
-    // 創建 events 表
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS `events` (
-            `id` INT PRIMARY KEY AUTO_INCREMENT,
-            `type_id` INT,
-            `title` VARCHAR(255) NOT NULL,
-            `description` TEXT,
-            `image` VARCHAR(255),
-            `start_date` DATETIME NOT NULL,
-            `end_date` DATETIME NOT NULL,
-            `location` VARCHAR(255) NOT NULL,
-            `max_participants` INT DEFAULT 0,
-            `current_participants` INT DEFAULT 0,
-            `registration_start_date` DATETIME NOT NULL,
-            `registration_end_date` DATETIME NOT NULL,
-            `status` TINYINT(1) DEFAULT 1,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (type_id) REFERENCES event_types(id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    ");
-
-    // 插入範例活動
-    $pdo->exec("
-        INSERT INTO `events` (
-            `type_id`,
-            `title`,
-            `description`,
-            `start_date`,
-            `end_date`,
-            `location`,
-            `max_participants`,
-            `registration_start_date`,
-            `registration_end_date`,
-            `status`
-        ) VALUES
-        (1, '玉皇上帝聖誕祝壽', '農曆正月初九玉皇上帝聖誕，舉行祝壽大典，設有祈福點燈、敬獻供品等儀式。', 
-            DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), 
-            '正殿', 200, DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), INTERVAL 30 DAY), 
-            DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), INTERVAL 1 DAY), 1),
-        (2, '媽祖遶境祈福', '農曆三月媽祖遶境活動，遊行隊伍將途經轄區內重要街道，為地方祈福。', 
-            DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), 
-            '廟前廣場', 500, DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), INTERVAL 30 DAY), 
-            DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), INTERVAL 1 DAY), 1),
-        (3, '端午節祭典', '端午節祭典活動，設有祭祀儀式、包粽子體驗等傳統文化活動。', 
-            DATE_ADD(CURRENT_DATE, INTERVAL 21 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 21 DAY), 
-            '廟前廣場', 100, DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 21 DAY), INTERVAL 30 DAY), 
-            DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 21 DAY), INTERVAL 1 DAY), 1),
-        (4, '中元普渡法會', '農曆七月普渡法會，設有祭祀儀式、普渡供品、祈福消災等活動。', 
-            DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 
-            '廟前廣場', 0, DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), INTERVAL 30 DAY), 
-            DATE_SUB(DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), INTERVAL 1 DAY), 1)
-    ");
-
-    // 獲取活動類型列表
-    $stmt = $pdo->query("
-        SELECT DISTINCT t.name as event_type 
-        FROM events e 
-        LEFT JOIN event_types t ON e.type_id = t.id 
-        WHERE e.status = 1
-    ");
-    $event_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-} catch (PDOException $e) {
-    error_log('創建資料表錯誤：' . $e->getMessage());
-    die('系統發生錯誤：' . $e->getMessage());
-}
-
 // 處理分頁
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = ITEMS_PER_PAGE;
 $offset = ($page - 1) * $limit;
 
 // 獲取活動類型篩選
-$event_type = isset($_GET['type']) ? $_GET['type'] : '';
+$event_type = isset($_GET['type']) ? (int)$_GET['type'] : 0;
+// 獲取時間篩選（upcoming: 即將到來, past: 歷史活動）
+$time_filter = isset($_GET['time']) ? $_GET['time'] : 'upcoming';
 
-// 如果有指定 ID，顯示單一活動
-if (isset($_GET['id'])) {
-    $event_id = (int)$_GET['id'];
-    $stmt = $pdo->prepare("
-        SELECT e.*, t.name as type_name,
-            (SELECT COALESCE(SUM(participants), 0) 
-             FROM event_registrations 
-             WHERE event_id = e.id AND status = 1) as current_participants
-        FROM events e 
-        LEFT JOIN event_types t ON e.type_id = t.id 
-        WHERE e.id = ? AND e.status = 1
-    ");
-    $stmt->execute([$event_id]);
-    $event = $stmt->fetch();
-    
-    if (!$event) {
-        header('Location: events.php');
-        exit;
-    }
-} else {
-    // 構建查詢條件
+// 初始化分頁變數
+$total_pages = 1;
+
+// 構建查詢字符串
+$query_string = '';
+if ($event_type) {
+    $query_string .= '&type=' . urlencode($event_type);
+}
+if ($time_filter) {
+    $query_string .= '&time=' . urlencode($time_filter);
+}
+
+// 獲取活動列表
+try {
+    // 構建基本的 WHERE 子句
     $where_clause = "WHERE e.status = 1";
-    $params = [];
+    
+    // 根據時間篩選添加條件
+    if ($time_filter === 'upcoming') {
+        $where_clause .= " AND e.end_date >= CURRENT_TIMESTAMP";
+    } elseif ($time_filter === 'past') {
+        $where_clause .= " AND e.end_date < CURRENT_TIMESTAMP";
+    }
+
+    // 如果有活動類型篩選，添加條件
+    if ($event_type) {
+        $where_clause .= " AND e.event_type_id = :event_type";
+    }
+
+    // 先計算總記錄數
+    $count_sql = "
+        SELECT COUNT(*) 
+        FROM events e
+        LEFT JOIN event_types et ON e.event_type_id = et.id
+        $where_clause
+    ";
     
     if ($event_type) {
-        $where_clause .= " AND t.name = :type_name";
-        $params[':type_name'] = $event_type;
+        $stmt = $pdo->prepare($count_sql);
+        $stmt->bindValue(':event_type', $event_type, PDO::PARAM_INT);
+        $stmt->execute();
+    } else {
+        $stmt = $pdo->query($count_sql);
     }
     
-    // 只顯示未結束的活動
-    $where_clause .= " AND e.start_date >= CURRENT_DATE()";
-    
-    // 獲取總數用於分頁
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*) 
-        FROM events e 
-        LEFT JOIN event_types t ON e.type_id = t.id 
-        " . $where_clause
-    );
-    
-    if (!empty($params)) {
-        foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
-    }
-    
-    $stmt->execute();
-    $total = $stmt->fetchColumn();
-    $total_pages = ceil($total / $limit);
-    
+    $total_records = $stmt->fetchColumn();
+    $total_pages = ceil($total_records / $limit);
+
     // 獲取活動列表
     $sql = "
-        SELECT e.*, t.name as type_name,
-            (SELECT COALESCE(SUM(participants), 0) 
-             FROM event_registrations 
-             WHERE event_id = e.id AND status = 1) as current_participants
-        FROM events e 
-        LEFT JOIN event_types t ON e.type_id = t.id 
-        {$where_clause} 
-        ORDER BY e.start_date ASC 
+        SELECT e.*, et.name as type_name,
+            (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.id AND status = 'confirmed') as confirmed_count
+        FROM events e
+        LEFT JOIN event_types et ON e.event_type_id = et.id
+        $where_clause
+        ORDER BY " . ($time_filter === 'past' ? 'e.end_date DESC' : 'e.start_date ASC') . "
         LIMIT :offset, :limit
     ";
     
     $stmt = $pdo->prepare($sql);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    
-    if (!empty($params)) {
-        foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
+    if ($event_type) {
+        $stmt->bindValue(':event_type', $event_type, PDO::PARAM_INT);
     }
-    
     $stmt->execute();
-    $events_list = $stmt->fetchAll();
+    $events = $stmt->fetchAll();
+} catch (PDOException $e) {
+    error_log('Error fetching events: ' . $e->getMessage());
+    $events = [];
+}
+
+// 獲取活動類型列表
+try {
+    $stmt = $pdo->query("
+        SELECT id, name, description 
+        FROM event_types 
+        WHERE status = 'active' 
+        ORDER BY sort_order
+    ");
+    $event_types = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('獲取活動類型錯誤：' . $e->getMessage());
+    $event_types = [];
 }
 ?>
 <!DOCTYPE html>
@@ -201,6 +117,176 @@ if (isset($_GET['id'])) {
     <link rel="stylesheet" href="assets/css/events.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .events-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .event-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .event-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .event-image {
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+        }
+
+        .event-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .event-content {
+            padding: 20px;
+        }
+
+        .event-title {
+            font-size: 1.2em;
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .event-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .event-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .event-description {
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .registration-info {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        .registration-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .btn-register {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #4a90e2;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-register:hover {
+            background-color: #357abd;
+        }
+
+        .btn-register.disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .deadline-warning {
+            color: #dc3545;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .event-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 分頁樣式 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            margin: 30px 0;
+        }
+
+        .page-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .page-btn:hover {
+            background-color: #f8f9fa;
+            border-color: #4a90e2;
+            color: #4a90e2;
+        }
+
+        .page-btn.active {
+            background-color: #4a90e2;
+            border-color: #4a90e2;
+            color: #fff;
+        }
+
+        .page-btn.first,
+        .page-btn.last,
+        .page-btn.prev,
+        .page-btn.next {
+            font-size: 14px;
+        }
+
+        @media (max-width: 576px) {
+            .pagination {
+                gap: 3px;
+            }
+            
+            .page-btn {
+                min-width: 32px;
+                height: 32px;
+                padding: 0 6px;
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 <body>
 <?php include 'templates/header.php'; ?>
@@ -212,22 +298,35 @@ if (isset($_GET['id'])) {
                 <header class="event-header">
                     <h1><?php echo htmlspecialchars($event['title']); ?></h1>
                     <div class="event-meta">
+                        <span class="type">
+                            <i class="fas fa-tag"></i> 
+                            <?php echo htmlspecialchars($event['type_name'] ?? '未分類'); ?>
+                        </span>
                         <span class="date">
                             <i class="fas fa-calendar"></i> 
-                            <?php echo date('Y/m/d', strtotime($event['start_date'])); ?>
+                            <?php 
+                            $start_date = new DateTime($event['start_date']);
+                            $end_date = new DateTime($event['end_date']);
+                            echo $start_date->format('Y/m/d');
+                            if ($start_date->format('Y-m-d') !== $end_date->format('Y-m-d')) {
+                                echo ' ~ ' . $end_date->format('Y/m/d');
+                            }
+                            ?>
                         </span>
                         <span class="time">
                             <i class="fas fa-clock"></i> 
-                            <?php echo date('H:i', strtotime($event['start_date'])); ?>
+                            <?php 
+                            echo $start_date->format('H:i') . ' ~ ' . $end_date->format('H:i');
+                            ?>
                         </span>
                         <span class="location">
                             <i class="fas fa-map-marker-alt"></i> 
                             <?php echo htmlspecialchars($event['location']); ?>
                         </span>
-                        <?php if (!empty($event['type_name'])): ?>
-                            <span class="type">
-                                <i class="fas fa-tag"></i> 
-                                <?php echo htmlspecialchars($event['type_name']); ?>
+                        <?php if ($event['max_participants'] > 0): ?>
+                            <span class="participants">
+                                <i class="fas fa-users"></i>
+                                報名人數：<?php echo $event['current_participants']; ?> / <?php echo $event['max_participants']; ?>
                             </span>
                         <?php endif; ?>
                     </div>
@@ -241,26 +340,74 @@ if (isset($_GET['id'])) {
                 <?php endif; ?>
 
                 <div class="event-content">
-                    <?php echo nl2br(htmlspecialchars($event['description'])); ?>
+                    <div class="event-description">
+                        <h2>活動說明</h2>
+                        <?php echo nl2br(htmlspecialchars($event['description'])); ?>
+                    </div>
+
+                    <?php if ($event['max_participants'] > 0): ?>
+                        <div class="event-registration-info">
+                            <h2>報名資訊</h2>
+                            <ul>
+                                <li>
+                                    <strong>報名截止日期：</strong>
+                                    <?php 
+                                    $deadline = new DateTime($event['registration_deadline']);
+                                    echo $deadline->format('Y/m/d H:i'); 
+                                    ?>
+                                </li>
+                                <li>
+                                    <strong>報名狀態：</strong>
+                                    <?php
+                                    $now = new DateTime();
+                                    $start_date = new DateTime($event['start_date']);
+                                    
+                                    if ($now > $start_date) {
+                                        echo '<span class="status-ended">活動已結束</span>';
+                                    } elseif ($now > $deadline) {
+                                        echo '<span class="status-closed">報名已截止</span>';
+                                    } elseif ($event['current_participants'] >= $event['max_participants']) {
+                                        echo '<span class="status-full">名額已滿</span>';
+                                    } else {
+                                        echo '<span class="status-open">開放報名中</span>';
+                                    }
+                                    ?>
+                                </li>
+                                <li>
+                                    <strong>剩餘名額：</strong>
+                                    <?php echo max(0, $event['max_participants'] - $event['current_participants']); ?> 個
+                                </li>
+                            </ul>
+
+                            <?php if ($now <= $deadline && $now <= $start_date && $event['current_participants'] < $event['max_participants']): ?>
+                                <div class="registration-actions">
+                                    <a href="event_registration.php?id=<?php echo $event['id']; ?>" class="btn btn-primary">
+                                        <i class="fas fa-sign-in-alt"></i> 立即報名
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($event['notes'])): ?>
+                        <div class="event-notes">
+                            <h2>注意事項</h2>
+                            <?php echo nl2br(htmlspecialchars($event['notes'])); ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
-                <?php if ($event['max_participants'] > 0): ?>
-                    <div class="event-registration">
-                        <p class="participants-info">
-                            目前報名人數：<?php echo $event['current_participants']; ?> / <?php echo $event['max_participants']; ?>
-                        </p>
-                        <?php if ($event['current_participants'] < $event['max_participants']): ?>
-                            <a href="event_registration.php?id=<?php echo $event['id']; ?>" class="btn btn-primary">
-                                <i class="fas fa-sign-in-alt"></i> 立即報名
+                <footer class="event-footer">
+                    <div class="event-actions">
+                        <a href="events.php" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 返回列表
+                        </a>
+                        <?php if (isset($_SESSION['user_id'])): ?>
+                            <a href="event_registration_history.php" class="btn btn-info">
+                                <i class="fas fa-history"></i> 我的報名記錄
                             </a>
-                        <?php else: ?>
-                            <p class="registration-closed">報名已額滿</p>
                         <?php endif; ?>
                     </div>
-                <?php endif; ?>
-
-                <footer class="event-footer">
-                    <a href="events.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> 返回列表</a>
                 </footer>
             </article>
         <?php else: ?>
@@ -271,97 +418,143 @@ if (isset($_GET['id'])) {
                     <div class="event-filters">
                         <a href="events.php" class="filter-btn <?php echo !$event_type ? 'active' : ''; ?>">全部</a>
                         <?php foreach ($event_types as $type): ?>
-                            <a href="?type=<?php echo urlencode($type); ?>" 
-                               class="filter-btn <?php echo $event_type === $type ? 'active' : ''; ?>">
-                                <?php echo htmlspecialchars($type); ?>
+                            <a href="?type=<?php echo $type['id']; ?>" 
+                               class="filter-btn <?php echo $event_type === (int)$type['id'] ? 'active' : ''; ?>">
+                                <?php echo htmlspecialchars($type['name']); ?>
                             </a>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             </div>
 
-            <div class="events-list">
-                <?php if (empty($events_list)): ?>
-                    <div class="no-results">
+            <div class="filter-options">
+                <a href="?time=upcoming" class="filter-btn <?php echo $time_filter === 'upcoming' ? 'active' : ''; ?>">
+                    即將舉辦的活動
+                </a>
+                <a href="?time=past" class="filter-btn <?php echo $time_filter === 'past' ? 'active' : ''; ?>">
+                    歷史活動
+                </a>
+            </div>
+
+            <div class="events-container">
+                <?php if (empty($events)): ?>
+                    <div class="no-events">
                         <p>目前沒有進行中的活動</p>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($events_list as $item): ?>
-                        <article class="event-item">
-                            <?php if ($item['image']): ?>
-                                <div class="event-image">
-                                    <a href="events.php?id=<?php echo $item['id']; ?>">
-                                        <img src="<?php echo htmlspecialchars($item['image']); ?>" 
-                                             alt="<?php echo htmlspecialchars($item['title']); ?>">
-                                    </a>
-                                </div>
-                            <?php endif; ?>
-                            <div class="event-content">
-                                <h2>
-                                    <a href="events.php?id=<?php echo $item['id']; ?>">
-                                        <?php echo htmlspecialchars($item['title']); ?>
-                                    </a>
-                                </h2>
-                                <div class="event-meta">
-                                    <span class="date">
-                                        <i class="fas fa-calendar"></i> 
-                                        <?php echo date('Y/m/d', strtotime($item['start_date'])); ?>
-                                    </span>
-                                    <span class="time">
-                                        <i class="fas fa-clock"></i> 
-                                        <?php echo date('H:i', strtotime($item['start_date'])); ?>
-                                    </span>
-                                    <span class="location">
-                                        <i class="fas fa-map-marker-alt"></i> 
-                                        <?php echo htmlspecialchars($item['location']); ?>
-                                    </span>
-                                    <?php if ($item['max_participants'] > 0): ?>
-                                        <span class="participants">
-                                            <i class="fas fa-users"></i>
-                                            <?php echo $item['current_participants']; ?> / <?php echo $item['max_participants']; ?>
+                    <div class="event-grid">
+                        <?php foreach ($events as $event): ?>
+                            <div class="event-card">
+                                <?php if ($event['image']): ?>
+                                    <div class="event-image">
+                                        <img src="<?php echo htmlspecialchars($event['image']); ?>" 
+                                             alt="<?php echo htmlspecialchars($event['title']); ?>">
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <div class="event-content">
+                                    <h2 class="event-title"><?php echo htmlspecialchars($event['title']); ?></h2>
+                                    
+                                    <div class="event-meta">
+                                        <span>
+                                            <i class="fas fa-calendar-alt"></i>
+                                            <?php echo date('Y/m/d H:i', strtotime($event['start_date'])); ?>
                                         </span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="event-excerpt">
-                                    <?php 
-                                    $excerpt = mb_substr(strip_tags($item['description']), 0, 150, 'UTF-8');
-                                    echo htmlspecialchars($excerpt) . '...';
-                                    ?>
-                                </div>
-                                <div class="event-actions">
-                                    <a href="events.php?id=<?php echo $item['id']; ?>" class="btn btn-secondary">
-                                        活動詳情 <i class="fas fa-arrow-right"></i>
-                                    </a>
-                                    <?php if ($item['max_participants'] > 0 && $item['current_participants'] < $item['max_participants']): ?>
-                                        <a href="event_registration.php?id=<?php echo $item['id']; ?>" class="btn btn-primary">
-                                            立即報名 <i class="fas fa-sign-in-alt"></i>
-                                        </a>
-                                    <?php endif; ?>
+                                        <span>
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            <?php echo htmlspecialchars($event['location']); ?>
+                                        </span>
+                                        <?php if ($event['type_name']): ?>
+                                            <span>
+                                                <i class="fas fa-tag"></i>
+                                                <?php echo htmlspecialchars($event['type_name']); ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div class="event-description">
+                                        <?php echo nl2br(htmlspecialchars(mb_substr($event['description'], 0, 100))); ?>...
+                                    </div>
+
+                                    <div class="registration-info">
+                                        <div class="registration-status">
+                                            <span>
+                                                <i class="fas fa-users"></i>
+                                                已報名：<?php echo $event['confirmed_count']; ?> 人
+                                                <?php if ($event['max_participants']): ?>
+                                                    / 上限 <?php echo $event['max_participants']; ?> 人
+                                                <?php endif; ?>
+                                            </span>
+                                        </div>
+
+                                        <?php
+                                        $can_register = true;
+                                        $disabled_reason = '';
+
+                                        // 檢查是否已達人數上限
+                                        if ($event['max_participants'] && $event['confirmed_count'] >= $event['max_participants']) {
+                                            $can_register = false;
+                                            $disabled_reason = '報名人數已滿';
+                                        }
+                                        // 檢查報名截止時間
+                                        elseif ($event['registration_deadline'] && strtotime($event['registration_deadline']) < time()) {
+                                            $can_register = false;
+                                            $disabled_reason = '報名已截止';
+                                        }
+                                        ?>
+
+                                        <?php if ($can_register): ?>
+                                            <a href="event_registration.php?id=<?php echo $event['id']; ?>" 
+                                               class="btn-register">
+                                                立即報名
+                                            </a>
+                                            <?php if ($event['registration_deadline']): ?>
+                                                <div class="deadline-warning">
+                                                    報名截止時間：<?php echo date('Y/m/d H:i', strtotime($event['registration_deadline'])); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="btn-register disabled">
+                                                <?php echo $disabled_reason; ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
-                        </article>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </div>
 
             <?php if ($total_pages > 1): ?>
                 <div class="pagination">
                     <?php if ($page > 1): ?>
-                        <a href="?page=<?php echo $page - 1; ?><?php echo $event_type ? '&type=' . urlencode($event_type) : ''; ?>" class="prev">
-                            <i class="fas fa-chevron-left"></i> 上一頁
+                        <a href="?page=1<?php echo $query_string; ?>" class="page-btn first">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                        <a href="?page=<?php echo $page - 1; ?><?php echo $query_string; ?>" class="page-btn prev">
+                            <i class="fas fa-angle-left"></i>
                         </a>
                     <?php endif; ?>
 
-                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                        <a href="?page=<?php echo $i; ?><?php echo $event_type ? '&type=' . urlencode($event_type) : ''; ?>" 
-                           class="<?php echo $i === $page ? 'active' : ''; ?>">
+                    <?php
+                    $start_page = max(1, $page - 2);
+                    $end_page = min($total_pages, $page + 2);
+                    
+                    for ($i = $start_page; $i <= $end_page; $i++):
+                    ?>
+                        <a href="?page=<?php echo $i; ?><?php echo $query_string; ?>" 
+                           class="page-btn <?php echo $i === $page ? 'active' : ''; ?>">
                             <?php echo $i; ?>
                         </a>
                     <?php endfor; ?>
 
                     <?php if ($page < $total_pages): ?>
-                        <a href="?page=<?php echo $page + 1; ?><?php echo $event_type ? '&type=' . urlencode($event_type) : ''; ?>" class="next">
-                            下一頁 <i class="fas fa-chevron-right"></i>
+                        <a href="?page=<?php echo $page + 1; ?><?php echo $query_string; ?>" class="page-btn next">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                        <a href="?page=<?php echo $total_pages; ?><?php echo $query_string; ?>" class="page-btn last">
+                            <i class="fas fa-angle-double-right"></i>
                         </a>
                     <?php endif; ?>
                 </div>
@@ -373,3 +566,338 @@ if (isset($_GET['id'])) {
 <script src="assets/js/main.js"></script>
 </body>
 </html>
+
+<style>
+/* 活動詳情頁面樣式 */
+.event-detail {
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.event-header {
+    margin-bottom: 30px;
+}
+
+.event-header h1 {
+    font-size: 2em;
+    color: #333;
+    margin: 0 0 20px 0;
+}
+
+.event-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.event-meta span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #666;
+    font-size: 0.95em;
+}
+
+.event-meta i {
+    color: #4a90e2;
+}
+
+.event-image {
+    margin-bottom: 30px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.event-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.event-content {
+    line-height: 1.6;
+}
+
+.event-description,
+.event-registration-info,
+.event-notes {
+    margin-bottom: 30px;
+}
+
+.event-content h2 {
+    font-size: 1.5em;
+    color: #333;
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+}
+
+.event-registration-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+}
+
+.event-registration-info li {
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.event-registration-info strong {
+    color: #333;
+    margin-right: 10px;
+}
+
+.status-open { color: #28a745; }
+.status-closed { color: #dc3545; }
+.status-full { color: #ffc107; }
+.status-ended { color: #6c757d; }
+
+.registration-actions {
+    margin-top: 20px;
+}
+
+.event-footer {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.event-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #4a90e2;
+    color: white;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-info {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .event-detail {
+        padding: 20px;
+    }
+
+    .event-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .event-actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* 活動篩選按鈕樣式 */
+.event-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: #f8f9fa;
+    color: #666;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid #ddd;
+}
+
+.filter-btn:hover {
+    background: #e9ecef;
+    color: #333;
+}
+
+.filter-btn.active {
+    background: #4a90e2;
+    color: white;
+    border-color: #4a90e2;
+}
+
+/* 活動列表樣式 */
+.events-list {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.event-item {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.event-item .event-image {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+}
+
+.event-item .event-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.event-item .event-content {
+    padding: 20px;
+    flex: 1;
+}
+
+.event-item h2 {
+    margin: 0 0 15px 0;
+    font-size: 1.5em;
+}
+
+.event-item h2 a {
+    color: #333;
+    text-decoration: none;
+}
+
+.event-item h2 a:hover {
+    color: #4a90e2;
+}
+
+.event-item .event-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.event-item .event-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.event-item .event-meta i {
+    color: #4a90e2;
+}
+
+.event-item .event-excerpt {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.event-item .event-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+/* 無資料提示樣式 */
+.no-results {
+    text-align: center;
+    padding: 50px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.no-results p {
+    color: #666;
+    font-size: 1.1em;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .event-filters {
+        justify-content: center;
+    }
+    
+    .event-item {
+        flex-direction: column;
+    }
+    
+    .event-item .event-image {
+        width: 100%;
+        height: 180px;
+    }
+    
+    .event-item .event-actions {
+        flex-direction: column;
+    }
+    
+    .event-item .event-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.filter-options {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.filter-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    margin: 0 5px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    color: #333;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.filter-btn.active {
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+    color: white;
+}
+
+.filter-btn:hover {
+    background-color: #e9ecef;
+}
+
+.filter-btn.active:hover {
+    background-color: #357abd;
+}
+</style>

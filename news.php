@@ -60,9 +60,9 @@ $total_pages = ceil($total_records / $per_page);
 // 獲取新聞列表
 try {
     $sql = "
-        SELECT n.*, a.username as author_name, c.name as category_name
+        SELECT n.*, u.username as author_name, c.name as category_name
         FROM news n 
-        LEFT JOIN admins a ON n.created_by = a.id 
+        LEFT JOIN users u ON n.created_by = u.id 
         LEFT JOIN news_categories c ON n.category_id = c.id
         {$where_clause} 
         ORDER BY n.created_at DESC 
@@ -85,9 +85,9 @@ try {
     // 檢查是否有資料
     if (empty($news_list)) {
         // 檢查資料表是否存在資料
-        $check_sql = "SELECT COUNT(*) FROM news";
+        $check_sql = "SELECT COUNT(*) FROM news WHERE status = 'published'";
         $total_news = $pdo->query($check_sql)->fetchColumn();
-        error_log("Total news in database: " . $total_news);
+        error_log("Total published news in database: " . $total_news);
     }
 
 } catch (PDOException $e) {

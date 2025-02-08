@@ -1,39 +1,54 @@
+-- 設定資料庫編碼
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+USE `shrine_db`;
+
 -- 新聞分類表
 CREATE TABLE IF NOT EXISTS `news_categories` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `name` varchar(50) NOT NULL,
     `slug` varchar(50) NOT NULL,
     `description` text,
+    `status` enum('active','inactive') NOT NULL DEFAULT 'active',
     `sort_order` int(11) DEFAULT 0,
-    `status` tinyint(1) NOT NULL DEFAULT 1,
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_slug` (`slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 新聞文章表
+-- 新聞表
 CREATE TABLE IF NOT EXISTS `news` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `category_id` int(11) DEFAULT NULL,
     `title` varchar(255) NOT NULL,
-    `slug` varchar(255) NOT NULL,
     `content` text NOT NULL,
     `image` varchar(255) DEFAULT NULL,
-    `views` int(11) DEFAULT 0,
-    `is_featured` tinyint(1) DEFAULT 0,
-    `status` varchar(20) NOT NULL DEFAULT 'draft',
-    `created_by` int(11) NOT NULL,
-    `updated_by` int(11) DEFAULT NULL,
-    `publish_date` timestamp NULL DEFAULT NULL,
+    `status` enum('draft','published','archived') NOT NULL DEFAULT 'draft',
+    `views` int(11) NOT NULL DEFAULT 0,
+    `created_by` int(11) DEFAULT NULL,
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_slug` (`slug`),
-    KEY `idx_category` (`category_id`),
+    KEY `idx_category_id` (`category_id`),
     KEY `idx_created_by` (`created_by`),
-    KEY `idx_updated_by` (`updated_by`),
-    CONSTRAINT `fk_news_category` FOREIGN KEY (`category_id`) REFERENCES `news_categories` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_news_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
-    CONSTRAINT `fk_news_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 
+    KEY `idx_status` (`status`),
+    CONSTRAINT `fk_news_category_id` FOREIGN KEY (`category_id`) REFERENCES `news_categories` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_news_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 插入預設新聞分類
+INSERT INTO `news_categories` (`name`, `slug`, `description`, `status`, `sort_order`) VALUES
+('宮廟公告', 'announcements', '重要公告與最新消息', 'active', 1),
+('活動快訊', 'events', '近期活動與法會資訊', 'active', 2),
+('祈福服務', 'blessings', '祈福與點燈服務資訊', 'active', 3),
+('宮廟文化', 'culture', '宮廟文化與傳統習俗介紹', 'active', 4);
+
+-- 插入測試新聞
+INSERT INTO `news` (`category_id`, `title`, `content`, `status`, `created_at`) VALUES
+(1, '農曆新年開放時間公告', '農曆新年期間（除夕至初五）本宮將24小時開放，方便信眾參拜。\n初一至初五將有特別祈福法會，歡迎參加。', 'published', NOW()),
+(2, '2024年春季祈福法會', '2024年春季祈福法會將於3月份舉行，活動內容包括：\n1. 集體祈福\n2. 安太歲\n3. 點光明燈\n請信眾踴躍參加。', 'published', NOW()),
+(3, '清明節祭祖服務開放預約', '本宮清明節祭祖服務已開放預約，提供以下服務：\n1. 祖先牌位安奉\n2. 清明祭祀\n3. 祖先超渡\n詳情請洽詢服務台。', 'published', NOW());
+
+SET FOREIGN_KEY_CHECKS = 1; 

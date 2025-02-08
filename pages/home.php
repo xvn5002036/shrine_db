@@ -1,4 +1,3 @@
-
 <link rel="stylesheet" href="assets/css/home.css">
 
 <div class="container">
@@ -62,7 +61,7 @@
         <div class="news-list">
             <?php
             // 從資料庫獲取最新的兩則新聞
-            $stmt = $pdo->prepare("SELECT * FROM news WHERE status = 'published' ORDER BY publish_date DESC LIMIT 2");
+            $stmt = $pdo->prepare("SELECT * FROM news WHERE status = 'published' ORDER BY created_at DESC LIMIT 2");
             $stmt->execute();
             $latest_news = $stmt->fetchAll();
 
@@ -78,10 +77,10 @@
                     <div class="news-content">
                         <h3><?php echo htmlspecialchars($news['title']); ?></h3>
                         <div class="news-meta">
-                            <span><i class="far fa-calendar-alt"></i> <?php echo date('Y/m/d', strtotime($news['publish_date'])); ?></span>
+                            <span><i class="far fa-calendar-alt"></i> <?php echo date('Y/m/d', strtotime($news['created_at'])); ?></span>
                         </div>
                         <p><?php echo mb_substr(strip_tags($news['content']), 0, 100, 'UTF-8') . '...'; ?></p>
-                        <a href="news.php?id=<?php echo $news['id']; ?>" class="btn btn-outline">閱讀更多</a>
+                        <a href="news_detail.php?id=<?php echo $news['id']; ?>" class="btn btn-outline">閱讀更多</a>
                     </div>
                 </div>
             <?php 
