@@ -62,7 +62,7 @@
                     <li><a href="<?php echo isset($current_page) ? '../' : ''; ?>news.php">最新消息</a></li>
                     <li><a href="<?php echo isset($current_page) ? '../' : ''; ?>events.php">活動資訊</a></li>
                     <li<?php echo isset($current_page) && $current_page === 'blessings' ? ' class="active"' : ''; ?>>
-                        <a href="<?php echo isset($current_page) ? '../' : ''; ?>blessings/index.php">祈福服務</a>
+                        <a href="<?php echo isset($current_page) ? '../' : ''; ?>blessings.php">祈福服務</a>
                     </li>
                     <li><a href="<?php echo isset($current_page) ? '../' : ''; ?>gallery.php">活動花絮</a></li>
                     <li><a href="<?php echo isset($current_page) ? '../' : ''; ?>contact.php">聯絡我們</a></li>

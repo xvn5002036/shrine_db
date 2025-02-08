@@ -20,7 +20,7 @@ try {
         'users' => "SELECT COUNT(*) FROM users",
         'news' => "SELECT COUNT(*) FROM news WHERE status = 'published'",
         'events' => "SELECT COUNT(*) FROM events WHERE status = 'published'",
-        'prayer_requests' => "SELECT COUNT(*) FROM prayer_requests WHERE status = 'pending'",
+        'blessing_registrations' => "SELECT COUNT(*) FROM blessing_registrations WHERE status = 'pending'",
         'contact_messages' => "SELECT COUNT(*) FROM contact_messages WHERE status = 'unread'",
         'gallery_images' => "SELECT COUNT(*) FROM gallery_images"
     ];
@@ -40,7 +40,7 @@ try {
         'users' => 0,
         'news' => 0,
         'events' => 0,
-        'prayer_requests' => 0,
+        'blessing_registrations' => 0,
         'contact_messages' => 0,
         'gallery_images' => 0
     ];
@@ -79,18 +79,18 @@ try {
 
 // 獲取最新祈福請求
 try {
-    $latest_prayers = $pdo->query("
-        SELECT pr.*, pt.name as prayer_type_name, u.name as user_name
-        FROM prayer_requests pr 
-        LEFT JOIN prayer_types pt ON pr.prayer_type_id = pt.id
-        LEFT JOIN users u ON pr.user_id = u.id
-        WHERE pr.status = 'pending' 
-        ORDER BY pr.created_at DESC 
+    $latest_blessings = $pdo->query("
+        SELECT br.*, b.name as blessing_name, b.price, bt.name as type_name
+        FROM blessing_registrations br
+        LEFT JOIN blessings b ON br.blessing_id = b.id
+        LEFT JOIN blessing_types bt ON b.type_id = bt.id
+        WHERE br.status = 'pending'
+        ORDER BY br.created_at DESC
         LIMIT 5
     ")->fetchAll();
 } catch (PDOException $e) {
-    error_log("Error getting prayer requests: " . $e->getMessage());
-    $latest_prayers = [];
+    error_log("Error getting blessing requests: " . $e->getMessage());
+    $latest_blessings = [];
 }
 
 // 獲取最新聯絡訊息
@@ -556,22 +556,30 @@ $system_info = [
                     <div class="dashboard-section">
                         <div class="section-header">
                             <h2>待處理祈福</h2>
-                            <a href="prayers/" class="btn btn-sm btn-primary">查看全部</a>
+                            <a href="blessings/" class="btn btn-sm btn-primary">查看全部</a>
                         </div>
                         <div class="section-content">
-                            <?php if (empty($latest_prayers)): ?>
+                            <?php if (empty($latest_blessings)): ?>
                                 <p class="no-data">目前沒有待處理的祈福請求</p>
                             <?php else: ?>
                                 <div class="prayers-list">
-                                    <?php foreach ($latest_prayers as $prayer): ?>
+                                    <?php foreach ($latest_blessings as $blessing): ?>
                                         <div class="prayer-item">
                                             <div class="prayer-info">
-                                                <span class="prayer-type"><?php echo htmlspecialchars($prayer['prayer_type_name']); ?></span>
-                                                <span class="prayer-date"><?php echo date('Y-m-d', strtotime($prayer['created_at'])); ?></span>
+                                                <span class="prayer-type"><?php echo htmlspecialchars($blessing['type_name']); ?></span>
+                                                <span class="prayer-date"><?php echo date('Y-m-d', strtotime($blessing['created_at'])); ?></span>
                                             </div>
                                             <div class="prayer-user">
                                                 <i class="fas fa-user"></i>
-                                                <?php echo htmlspecialchars($prayer['user_name']); ?>
+                                                <?php echo htmlspecialchars($blessing['name']); ?>
+                                            </div>
+                                            <div class="prayer-details">
+                                                <div class="prayer-service">
+                                                    <?php echo htmlspecialchars($blessing['blessing_name']); ?>
+                                                </div>
+                                                <div class="prayer-price">
+                                                    NT$ <?php echo number_format($blessing['price']); ?>
+                                                </div>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>

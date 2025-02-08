@@ -118,6 +118,7 @@ try {
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
+        /* 活動列表特定樣式 */
         .events-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -132,10 +133,6 @@ try {
         }
 
         .event-card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow: hidden;
             transition: transform 0.3s ease;
         }
 
@@ -155,35 +152,10 @@ try {
             object-fit: cover;
         }
 
-        .event-content {
-            padding: 20px;
-        }
-
         .event-title {
             font-size: 1.2em;
             margin: 0 0 10px 0;
             color: #333;
-        }
-
-        .event-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 15px;
-            font-size: 0.9em;
-            color: #666;
-        }
-
-        .event-meta span {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .event-description {
-            margin-bottom: 15px;
-            color: #666;
-            line-height: 1.5;
         }
 
         .registration-info {
@@ -200,90 +172,20 @@ try {
             font-size: 0.9em;
         }
 
-        .btn-register {
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: #4a90e2;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-register:hover {
-            background-color: #357abd;
-        }
-
-        .btn-register.disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-
         .deadline-warning {
             color: #dc3545;
             font-size: 0.9em;
             margin-top: 5px;
         }
 
+        .filter-options {
+            margin: 20px 0;
+            text-align: center;
+        }
+
         @media (max-width: 768px) {
             .event-grid {
                 grid-template-columns: 1fr;
-            }
-        }
-
-        /* 分頁樣式 */
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 5px;
-            margin: 30px 0;
-        }
-
-        .page-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            padding: 0 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #fff;
-            color: #333;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .page-btn:hover {
-            background-color: #f8f9fa;
-            border-color: #4a90e2;
-            color: #4a90e2;
-        }
-
-        .page-btn.active {
-            background-color: #4a90e2;
-            border-color: #4a90e2;
-            color: #fff;
-        }
-
-        .page-btn.first,
-        .page-btn.last,
-        .page-btn.prev,
-        .page-btn.next {
-            font-size: 14px;
-        }
-
-        @media (max-width: 576px) {
-            .pagination {
-                gap: 3px;
-            }
-            
-            .page-btn {
-                min-width: 32px;
-                height: 32px;
-                padding: 0 6px;
-                font-size: 14px;
             }
         }
     </style>

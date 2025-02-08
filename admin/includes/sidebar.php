@@ -63,6 +63,10 @@ $nav_items = [
                     <i class="fas fa-external-link-alt"></i>
                     <span>前台首頁</span>
                 </a>
+                <a href="services.php" class="nav-link">
+       <i class="fas fa-pray"></i>
+       <span>祈福服務管理</span>
+   </a>
             </li>
             <li class="nav-divider"></li>
             <?php foreach ($nav_items as $key => $item): ?>
@@ -84,162 +88,13 @@ $nav_items = [
     </div>
 </aside>
 
-<style>
-.admin-sidebar {
-    width: 250px;
-    height: 100vh;
-    position: fixed;
-    left: 0;
-    top: 0;
-    background-color: #2c3e50;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease;
-    z-index: 1000;
-}
-
-.sidebar-header {
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.site-title {
-    font-size: 1.2rem;
-    margin: 0;
-    color: var(--primary-color);
-}
-
-.sidebar-toggle {
-    background: none;
-    border: none;
-    color: #fff;
-    cursor: pointer;
-    font-size: 1.2rem;
-    padding: 0.5rem;
-    display: none;
-}
-
-.admin-profile {
-    padding: 1.5rem 1rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.profile-image {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-}
-
-.profile-info {
-    flex: 1;
-}
-
-.admin-name {
-    margin: 0;
-    font-weight: 500;
-    font-size: 0.9rem;
-}
-
-.admin-role {
-    font-size: 0.8rem;
-    opacity: 0.7;
-}
-
-.sidebar-nav {
-    flex: 1;
-    padding: 1rem 0;
-    overflow-y: auto;
-}
-
-.nav-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.nav-item {
-    margin: 0.2rem 0;
-}
-
-.nav-link {
-    display: flex;
-    align-items: center;
-    padding: 0.8rem 1rem;
-    color: #fff;
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
-
-.nav-link i {
-    width: 20px;
-    margin-right: 10px;
-    font-size: 1.1rem;
-}
-
-.nav-item:hover .nav-link,
-.nav-item.active .nav-link {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--primary-color);
-}
-
-.sidebar-footer {
-    padding: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.logout-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #fff;
-    text-decoration: none;
-    padding: 0.5rem;
-    border-radius: 5px;
-    transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--primary-color);
-}
-
-.nav-divider {
-    height: 1px;
-    background-color: rgba(255, 255, 255, 0.1);
-    margin: 10px 0;
-}
-
-.nav-item a[target="_blank"] {
-    color: #4a90e2;
-}
-
-.nav-item a[target="_blank"]:hover {
-    background-color: rgba(74, 144, 226, 0.1);
-}
-
-@media (max-width: 768px) {
-    .admin-sidebar {
-        transform: translateX(-100%);
-    }
-
-    .admin-sidebar.show {
-        transform: translateX(0);
-    }
-
-    .sidebar-toggle {
-        display: block;
-    }
-}
-</style> 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebarToggle = document.querySelector('.sidebar-toggle');
+    const sidebar = document.querySelector('.admin-sidebar');
+    
+    sidebarToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('show');
+    });
+});
+</script> 
