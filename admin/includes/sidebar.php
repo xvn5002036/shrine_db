@@ -1,7 +1,33 @@
 <?php
 // 獲取當前頁面
 $current_page = basename($_SERVER['PHP_SELF']);
-$page = $_GET['page'] ?? 'home';
+$current_dir = basename(dirname($_SERVER['PHP_SELF']));
+
+// 設定當前頁面變數
+$page = '';
+switch ($current_dir) {
+    case 'admin':
+        $page = 'home';
+        break;
+    case 'news':
+        $page = 'news';
+        break;
+    case 'events':
+        $page = 'events';
+        break;
+    case 'gallery':
+        $page = 'gallery';
+        break;
+    case 'blessings':
+        $page = 'blessings';
+        break;
+    case 'users':
+        $page = 'users';
+        break;
+    case 'settings':
+        $page = 'settings';
+        break;
+}
 
 // 定義導航項目
 $nav_items = [
@@ -20,6 +46,11 @@ $nav_items = [
         'title' => '活動管理',
         'url' => '/admin/events/index.php'
     ],
+    'gallery' => [
+        'icon' => 'fas fa-images',
+        'title' => '相簿管理',
+        'url' => '/admin/gallery/gallery.php'
+    ],
     'blessings' => [
         'icon' => 'fas fa-pray',
         'title' => '祈福管理',
@@ -36,6 +67,30 @@ $nav_items = [
         'url' => '/admin/settings/index.php'
     ]
 ];
+
+// 判斷當前頁面是否為活動頁面
+function isCurrentPage($nav_key) {
+    global $current_dir, $current_page;
+    
+    switch ($nav_key) {
+        case 'home':
+            return $current_page === 'index.php' && $current_dir === 'admin';
+        case 'news':
+            return $current_dir === 'news';
+        case 'events':
+            return $current_dir === 'events';
+        case 'gallery':
+            return $current_dir === 'gallery';
+        case 'blessings':
+            return $current_dir === 'blessings';
+        case 'users':
+            return $current_dir === 'users';
+        case 'settings':
+            return $current_dir === 'settings';
+        default:
+            return false;
+    }
+}
 ?>
 
 <aside class="admin-sidebar">
@@ -63,18 +118,24 @@ $nav_items = [
                     <i class="fas fa-external-link-alt"></i>
                     <span>前台首頁</span>
                 </a>
-                <a href="services.php" class="nav-link">
-       <i class="fas fa-pray"></i>
-       <span>祈福服務管理</span>
-   </a>
             </li>
             <li class="nav-divider"></li>
             <?php foreach ($nav_items as $key => $item): ?>
-            <li class="nav-item <?php echo $page === $key ? 'active' : ''; ?>">
+            <li class="nav-item <?php echo isCurrentPage($key) ? 'active' : ''; ?>">
                 <a href="<?php echo $item['url']; ?>" class="nav-link">
                     <i class="<?php echo $item['icon']; ?>"></i>
                     <span><?php echo $item['title']; ?></span>
                 </a>
+                <?php if ($key === 'blessings'): ?>
+                <ul class="sub-menu">
+                    <li class="sub-menu-item">
+                        <a href="/admin/blessings/services.php" class="nav-link">
+                            <i class="fas fa-hand-holding-heart"></i>
+                            <span>祈福服務管理</span>
+                        </a>
+                    </li>
+                </ul>
+                <?php endif; ?>
             </li>
             <?php endforeach; ?>
         </ul>

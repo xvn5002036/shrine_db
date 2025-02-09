@@ -1,10 +1,27 @@
+/* 基礎設定 */
+html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    overflow-x: hidden;
+    position: relative;
+}
+
 /* 主要內容區域 */
 .main-content {
     margin-left: 250px;
-    padding-top: 60px;
-    min-height: 100vh;
-    background-color: #f8f9fa;
+    padding: 80px 20px 20px;
+    min-height: calc(100vh - 80px);
     transition: margin-left 0.3s ease;
+    position: relative;
+    width: calc(100% - 250px);
+    overflow-x: hidden;
 }
 
 /* 頭部樣式 */
@@ -19,8 +36,10 @@
     position: fixed;
     top: 0;
     right: 0;
-    left: 250px;
+    left: 280px;
     z-index: 999;
+    transition: left 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .header-left {
@@ -102,46 +121,57 @@
 
 /* 側邊欄樣式 */
 .admin-sidebar {
-    width: 250px;
-    height: 100vh;
     position: fixed;
-    left: 0;
     top: 0;
-    background-color: #2c3e50;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background: #2c3e50;
     color: #fff;
+    z-index: 1000;
+    transition: transform 0.3s ease;
     display: flex;
     flex-direction: column;
-    transition: all 0.3s ease;
-    z-index: 1000;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
+.admin-sidebar:hover {
+    overflow-y: auto;
+}
+
+/* 側邊欄頭部 */
 .sidebar-header {
-    padding: 1rem;
+    padding: 1.5rem;
+    background: #1a2634;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 80px;
 }
 
 .site-title {
-    font-size: 1.2rem;
+    font-size: 1.5rem;
+    font-weight: 700;
     margin: 0;
-    color: var(--primary-color);
+    color: #fff;
 }
 
+/* 管理員資訊區 */
 .admin-profile {
-    padding: 1.5rem 1rem;
+    padding: 1.5rem;
+    background: #243444;
     display: flex;
     align-items: center;
     gap: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .profile-image {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
+    background: #34495e;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -153,20 +183,20 @@
 }
 
 .admin-name {
+    font-weight: 600;
     margin: 0;
-    font-weight: 500;
-    font-size: 0.9rem;
+    color: #fff;
 }
 
 .admin-role {
-    font-size: 0.8rem;
-    opacity: 0.7;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
 }
 
+/* 導航選單 */
 .sidebar-nav {
     flex: 1;
     padding: 1rem 0;
-    overflow-y: auto;
 }
 
 .nav-list {
@@ -176,85 +206,105 @@
 }
 
 .nav-item {
-    margin: 0.2rem 0;
+    margin: 0;
+    position: relative;
 }
 
 .nav-link {
     display: flex;
     align-items: center;
-    padding: 0.8rem 1rem;
-    color: #fff;
+    padding: 0.875rem 1.5rem;
+    color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
     transition: all 0.3s ease;
+    position: relative;
+    white-space: nowrap;
 }
 
 .nav-link i {
-    width: 20px;
-    margin-right: 10px;
+    width: 1.5rem;
+    margin-right: 1rem;
     font-size: 1.1rem;
+    text-align: center;
+    transition: all 0.3s ease;
 }
 
 .nav-item:hover .nav-link,
 .nav-item.active .nav-link {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--primary-color);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
 }
 
+/* 側邊欄底部 */
 .sidebar-footer {
-    padding: 1rem;
+    padding: 1rem 1.5rem;
+    background: #1a2634;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .logout-btn {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    color: #fff;
+    color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
-    padding: 0.5rem;
-    border-radius: 5px;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
     transition: all 0.3s ease;
 }
 
 .logout-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--primary-color);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
 }
 
+.logout-btn i {
+    margin-right: 0.75rem;
+}
+
+/* 分隔線 */
 .nav-divider {
     height: 1px;
-    background-color: rgba(255, 255, 255, 0.1);
-    margin: 10px 0;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 1rem 0;
 }
 
+/* 外部連結樣式 */
 .nav-item a[target="_blank"] {
-    color: #4a90e2;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .nav-item a[target="_blank"]:hover {
-    background-color: rgba(74, 144, 226, 0.1);
+    color: #fff;
 }
 
 /* 響應式設計 */
 @media (max-width: 768px) {
-    .main-content {
-        margin-left: 0;
-    }
-    
     .admin-sidebar {
-        transform: translateX(-100%);
+        transform: translateX(-280px);
     }
     
     .admin-sidebar.show {
         transform: translateX(0);
     }
     
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding-top: 60px;
+    }
+
     .admin-header {
         left: 0;
+        width: 100%;
     }
 
     .sidebar-toggle {
         display: block;
+    }
+    
+    .admin-sidebar.show + .main-content {
+        margin-left: 250px;
+        width: calc(100% - 250px);
     }
 }
 
@@ -608,4 +658,37 @@
     margin: 0.5rem 0;
     overflow: hidden;
     border-top: 1px solid #e9ecef;
+}
+
+/* 子選單樣式 */
+.sub-menu {
+    list-style: none;
+    padding-left: 2.5rem;
+    margin: 0;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease-out;
+}
+
+.nav-item.active .sub-menu {
+    max-height: 200px;
+}
+
+.sub-menu-item {
+    margin: 0.5rem 0;
+}
+
+.sub-menu .nav-link {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.sub-menu .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sub-menu .nav-link i {
+    width: 1.5rem;
+    text-align: center;
+    margin-right: 0.5rem;
 } 

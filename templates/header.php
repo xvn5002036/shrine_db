@@ -8,12 +8,34 @@
     <link rel="stylesheet" href="<?php echo isset($current_page) ? '../' : ''; ?>assets/css/style.css">
 </head>
 <body>
+    <?php
+    // 確保資料庫連線
+    if (!isset($pdo)) {
+        require_once(isset($current_page) ? '../' : '') . 'includes/db_connect.php';
+    }
+
+    // 獲取設定值
+    try {
+        $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings");
+        $settings = [];
+        while ($row = $stmt->fetch()) {
+            $settings[$row['setting_key']] = $row['setting_value'];
+        }
+    } catch (PDOException $e) {
+        error_log('Error fetching settings: ' . $e->getMessage());
+        $settings = [];
+    }
+    ?>
     <header class="site-header">
         <div class="header-top">
             <div class="container">
                 <div class="contact-info">
-                    <span><i class="fas fa-phone"></i> (02) 2345-6789</span>
-                    <span><i class="fas fa-envelope"></i> 週一至週日 06:00-21:00</span>
+                    <?php if (!empty($settings['contact_phone'])): ?>
+                        <span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($settings['contact_phone']); ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($settings['contact_hours'])): ?>
+                        <span><i class="fas fa-clock"></i> <?php echo htmlspecialchars($settings['contact_hours']); ?></span>
+                    <?php endif; ?>
                 </div>
                 <div class="admin-link">
                     <a href="<?php echo isset($current_page) ? '../' : ''; ?>admin/login.php">
@@ -21,9 +43,26 @@
                     </a>
                 </div>
                 <div class="social-links">
-                    <a href="#"><i class="fab fa-facebook"></i></a>
-                    <a href="#"><i class="fab fa-instagram"></i></a>
-                    <a href="#"><i class="fab fa-line"></i></a>
+                    <?php if (!empty($settings['social_facebook'])): ?>
+                        <a href="<?php echo htmlspecialchars($settings['social_facebook']); ?>" target="_blank">
+                            <i class="fab fa-facebook"></i>
+                        </a>
+                    <?php endif; ?>
+                    <?php if (!empty($settings['social_instagram'])): ?>
+                        <a href="<?php echo htmlspecialchars($settings['social_instagram']); ?>" target="_blank">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    <?php endif; ?>
+                    <?php if (!empty($settings['social_line'])): ?>
+                        <a href="<?php echo htmlspecialchars($settings['social_line']); ?>" target="_blank">
+                            <i class="fab fa-line"></i>
+                        </a>
+                    <?php endif; ?>
+                    <?php if (!empty($settings['social_youtube'])): ?>
+                        <a href="<?php echo htmlspecialchars($settings['social_youtube']); ?>" target="_blank">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
