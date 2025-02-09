@@ -1,0 +1,288 @@
+/* 基本布局 */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f4f6f9;
+}
+
+.admin-container {
+    display: flex;
+    min-height: 100vh;
+    padding-left: 250px; /* 側邊欄寬度 */
+}
+
+.admin-main {
+    flex: 1;
+    padding: 80px 20px 20px 20px; /* 上方增加 padding 避免被頂部欄遮蓋 */
+    min-height: 100vh;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    background-color: #f4f6f9;
+}
+
+.content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* 快速操作按鈕 */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.quick-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-decoration: none;
+    color: #333;
+    transition: transform 0.2s;
+}
+
+.quick-action-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* 統計卡片 */
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    background: #f0f4ff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5em;
+    color: #4a90e2;
+}
+
+.stat-info h3 {
+    margin: 0;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.stat-info p {
+    margin: 5px 0 0;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+}
+
+.dashboard-sections {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.dashboard-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    height: fit-content;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 1.2em;
+    color: #333;
+    font-weight: 600;
+}
+
+.news-list, .events-grid, .prayers-list, .messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.news-item, .prayer-item, .message-item {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #eee;
+}
+
+.news-meta, .message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.news-category, .message-from {
+    color: #4a90e2;
+    font-weight: 500;
+}
+
+.news-title, .message-subject {
+    font-weight: 500;
+    color: #333;
+    margin: 8px 0;
+}
+
+.news-author, .message-preview {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.event-card {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #eee;
+}
+
+.event-date {
+    text-align: center;
+    min-width: 60px;
+    padding: 8px;
+    background: #4a90e2;
+    color: white;
+    border-radius: 6px;
+}
+
+.event-date .date {
+    font-size: 1.5em;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.event-date .month {
+    font-size: 0.8em;
+    opacity: 0.9;
+}
+
+.event-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1em;
+    color: #333;
+}
+
+.event-type {
+    color: #4a90e2;
+    font-size: 0.9em;
+    margin: 0 0 5px 0;
+}
+
+.event-time, .event-location {
+    font-size: 0.9em;
+    color: #666;
+    margin: 5px 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.message-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.9em;
+    border-radius: 4px;
+}
+
+.system-info {
+    grid-column: span 2;
+}
+
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.info-table th, .info-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.info-table th {
+    text-align: left;
+    color: #666;
+    width: 200px;
+    font-weight: 500;
+}
+
+.no-data {
+    text-align: center;
+    color: #666;
+    padding: 30px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 0.9em;
+}
+
+/* 響應式設計 */
+@media (max-width: 1200px) {
+    .dashboard-sections {
+        grid-template-columns: 1fr;
+    }
+    
+    .system-info {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-container {
+        padding-left: 0;
+    }
+
+    .admin-main {
+        padding: 70px 15px 15px 15px;
+    }
+
+    .stat-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .content {
+        padding: 0 10px;
+    }
+} 
