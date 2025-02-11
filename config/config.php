@@ -1,21 +1,24 @@
 <?php
-// 開啟錯誤報告
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // 設置時區
 date_default_timezone_set('Asia/Taipei');
 
 // 設置默認字符集
 mb_internal_encoding('UTF-8');
 
-// 定義常量
+// 定義基本路徑常量
 define('BASE_PATH', dirname(__DIR__));
 define('UPLOAD_PATH', BASE_PATH . '/uploads');
 define('BACKUP_PATH', BASE_PATH . '/backups');
 define('CONFIG_PATH', __DIR__);
 define('INCLUDES_PATH', BASE_PATH . '/includes');
 define('REPORTS_PATH', BASE_PATH . '/reports');
+define('LOGS_PATH', BASE_PATH . '/logs');
+
+// 開啟錯誤報告
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', LOGS_PATH . '/error.log');
 
 // 創建必要的目錄
 $directories = [
@@ -24,6 +27,7 @@ $directories = [
     UPLOAD_PATH . '/events',
     UPLOAD_PATH . '/members',
     BACKUP_PATH,
+    LOGS_PATH
 ];
 
 foreach ($directories as $dir) {
@@ -32,19 +36,9 @@ foreach ($directories as $dir) {
     }
 }
 
-// Session 設定 (必須在 session_start 之前)
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-session_set_cookie_params([
-    'lifetime' => 3600,
-    'path' => '/',
-    'domain' => '',
-    'secure' => false,
-    'httponly' => true
-]);
-
-// 開啟會話
+// Session 設定（在啟動 session 之前）
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params(3600, '/', '', false, true);
     session_start();
 }
 
@@ -64,17 +58,6 @@ try {
         ]
     );
     $GLOBALS['pdo'] = $pdo;
-    
-    // 同時建立 mysqli 連接
-    $conn = new mysqli(
-        $database_config['host'],
-        $database_config['username'],
-        $database_config['password'],
-        $database_config['dbname']
-    );
-    $conn->set_charset($database_config['charset']);
-    $GLOBALS['conn'] = $conn;
-    
 } catch (Exception $e) {
     die('資料庫連接失敗：' . $e->getMessage());
 }
@@ -99,6 +82,7 @@ define('DB_HOST', $database_config['host']);
 define('DB_NAME', $database_config['dbname']);
 define('DB_USER', $database_config['username']);
 define('DB_PASS', $database_config['password']);
+define('DB_CHARSET', $database_config['charset']);
 
 // 網站功能設定
 define('ENABLE_REGISTRATION', true);  // 是否開放註冊
@@ -114,15 +98,6 @@ define('CSRF_TOKEN_NAME', 'csrf_token');
 define('PASSWORD_MIN_LENGTH', 8);
 define('LOGIN_ATTEMPTS_LIMIT', 5);
 define('LOGIN_ATTEMPTS_TIMEOUT', 1800); // 30分鐘
-
-// 自訂函數
-function is_logged_in() {
-    return isset($_SESSION['user_id']);
-}
-
-function is_admin() {
-    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
-}
 
 // 錯誤處理函數
 function handleError($error) {

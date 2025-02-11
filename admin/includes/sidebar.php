@@ -34,37 +34,37 @@ $nav_items = [
     'home' => [
         'icon' => 'fas fa-home',
         'title' => '儀表板',
-        'url' => '/admin/index.php'
+        'url' => 'index.php'
     ],
     'news' => [
         'icon' => 'fas fa-newspaper',
         'title' => '最新消息管理',
-        'url' => '/admin/news/index.php'
+        'url' => 'news/index.php'
     ],
     'events' => [
         'icon' => 'fas fa-calendar-alt',
         'title' => '活動管理',
-        'url' => '/admin/events/index.php'
+        'url' => 'events/index.php'
     ],
     'gallery' => [
         'icon' => 'fas fa-images',
         'title' => '相簿管理',
-        'url' => '/admin/gallery/gallery.php'
+        'url' => 'gallery/gallery.php'
     ],
     'blessings' => [
         'icon' => 'fas fa-pray',
         'title' => '祈福管理',
-        'url' => '/admin/blessings/index.php'
+        'url' => 'blessings/index.php'
     ],
     'users' => [
         'icon' => 'fas fa-users',
         'title' => '用戶管理',
-        'url' => '/admin/users/index.php'
+        'url' => 'users/index.php'
     ],
     'settings' => [
         'icon' => 'fas fa-cog',
         'title' => '系統設定',
-        'url' => '/admin/settings/index.php'
+        'url' => 'settings/index.php'
     ]
 ];
 
@@ -91,6 +91,19 @@ function isCurrentPage($nav_key) {
             return false;
     }
 }
+
+// 輔助函數：獲取管理後台URL
+function getAdminUrl($path) {
+    $current_dir = dirname($_SERVER['PHP_SELF']);
+    $admin_root = '/admin/';
+    
+    // 如果當前已經在子目錄中，需要返回上一層
+    if (strpos($current_dir, '/admin/') !== false && $current_dir !== '/admin') {
+        return "../$path";
+    }
+    
+    return $path;
+}
 ?>
 
 <aside class="admin-sidebar">
@@ -114,7 +127,7 @@ function isCurrentPage($nav_key) {
     <nav class="sidebar-nav">
         <ul class="nav-list">
             <li class="nav-item">
-                <a href="/" class="nav-link" target="_blank">
+                <a href="../index.php" class="nav-link">
                     <i class="fas fa-external-link-alt"></i>
                     <span>前台首頁</span>
                 </a>
@@ -122,14 +135,14 @@ function isCurrentPage($nav_key) {
             <li class="nav-divider"></li>
             <?php foreach ($nav_items as $key => $item): ?>
             <li class="nav-item <?php echo isCurrentPage($key) ? 'active' : ''; ?>">
-                <a href="<?php echo $item['url']; ?>" class="nav-link">
+                <a href="<?php echo getAdminUrl($item['url']); ?>" class="nav-link">
                     <i class="<?php echo $item['icon']; ?>"></i>
                     <span><?php echo $item['title']; ?></span>
                 </a>
                 <?php if ($key === 'blessings'): ?>
                 <ul class="sub-menu">
                     <li class="sub-menu-item">
-                        <a href="/admin/blessings/services.php" class="nav-link">
+                        <a href="<?php echo getAdminUrl('blessings/services.php'); ?>" class="nav-link">
                             <i class="fas fa-hand-holding-heart"></i>
                             <span>祈福服務管理</span>
                         </a>
@@ -142,7 +155,7 @@ function isCurrentPage($nav_key) {
     </nav>
 
     <div class="sidebar-footer">
-        <a href="/admin/logout.php" class="logout-btn">
+        <a href="<?php echo getAdminUrl('logout.php'); ?>" class="logout-btn">
             <i class="fas fa-sign-out-alt"></i>
             <span>登出</span>
         </a>

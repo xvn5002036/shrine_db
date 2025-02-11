@@ -125,174 +125,120 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>新增活動 - <?php echo SITE_NAME; ?></title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        /* 修正側邊欄和主內容區域的布局 */
-        .admin-container {
-            display: flex;
-            min-height: 100vh;
+        body {
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
         }
 
-        .admin-main {
-            flex: 1;
+        .main-content {
+            margin-left: 280px;
             padding: 20px;
-            margin-left: 250px; /* 配合側邊欄寬度 */
-            width: calc(100% - 250px);
             min-height: 100vh;
             background-color: #f4f6f9;
         }
 
-        .content {
-            padding: 20px;
-            margin-top: 60px; /* 為頂部導航預留空間 */
-        }
-
-        /* 表單容器樣式 */
-        .form-container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .page-header {
             margin-bottom: 20px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
-        /* 響應式設計 */
-        @media (max-width: 768px) {
-            .admin-main {
-                margin-left: 0;
-                width: 100%;
-            }
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-            .content {
-                padding: 10px;
-            }
-
-            .datetime-group {
-                flex-direction: column;
-            }
+        .form-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 1rem;
         }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
+        .form-label {
             font-weight: 500;
+            margin-bottom: 0.5rem;
         }
 
-        .form-control {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
+        .breadcrumb {
+            margin-bottom: 0;
+            padding: 0;
         }
 
-        .datetime-group {
+        .btn-toolbar {
             display: flex;
             gap: 10px;
         }
 
-        .datetime-group .form-control {
-            flex: 1;
-        }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-
-        .alert-danger {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-        }
-
-        .alert-success {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
-
-        .form-actions {
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .btn-primary {
-            background-color: #4a90e2;
-            color: white;
-        }
-
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-
-        .image-preview {
-            margin-top: 10px;
-            max-width: 300px;
-        }
-
-        .image-preview img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 4px;
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
         }
     </style>
 </head>
-<body class="admin-page">
-    <div class="admin-container">
-        <?php include '../includes/sidebar.php'; ?>
-        
-        <main class="admin-main">
-            <?php include '../includes/header.php'; ?>
-            
-            <div class="content">
-                <div class="content-header">
-                    <h2>新增活動</h2>
-                    <nav class="breadcrumb">
-                        <a href="../index.php">首頁</a> /
-                        <a href="index.php">活動管理</a> /
-                        <span>新增活動</span>
-                    </nav>
-                </div>
+<body>
+    <?php require_once '../includes/header.php'; ?>
+    
+    <div class="main-content">
+        <div class="page-header">
+            <div class="toolbar">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="../index.php">首頁</a></li>
+                        <li class="breadcrumb-item"><a href="index.php">活動管理</a></li>
+                        <li class="breadcrumb-item active">新增活動</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
 
-                <?php if ($error): ?>
-                    <div class="alert alert-danger"><?php echo $error; ?></div>
-                <?php endif; ?>
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?php 
+                echo $_SESSION['error'];
+                unset($_SESSION['error']);
+                ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
 
-                <?php if ($success): ?>
-                    <div class="alert alert-success">活動新增成功！</div>
-                <?php endif; ?>
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <?php 
+                echo $_SESSION['success'];
+                unset($_SESSION['success']);
+                ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
 
-                <div class="form-container">
-                    <form method="post" enctype="multipart/form-data">
+        <div class="form-container">
+            <form method="POST" action="add.php" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <div class="row">
+                    <div class="col-md-8">
                         <div class="form-group">
-                            <label for="title">活動標題</label>
-                            <input type="text" id="title" name="title" class="form-control" required>
+                            <label for="title" class="form-label">活動標題 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" required>
                         </div>
-                        
+                    </div>
+                    <div class="col-md-4">
                         <div class="form-group">
-                            <label for="event_type_id">活動類型</label>
-                            <select id="event_type_id" name="event_type_id" class="form-control" required>
-                                <option value="">選擇活動類型</option>
+                            <label for="event_type_id" class="form-label">活動類型 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="event_type_id" name="event_type_id" required>
+                                <option value="">請選擇活動類型</option>
                                 <?php foreach ($event_types as $type): ?>
                                     <option value="<?php echo $type['id']; ?>">
                                         <?php echo htmlspecialchars($type['name']); ?>
@@ -300,95 +246,100 @@ try {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="description">活動說明</label>
-                            <textarea id="description" name="description" class="form-control" rows="6" required></textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="image">活動圖片</label>
-                            <input type="file" id="image" name="image" class="form-control" accept="image/*">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="location">活動地點</label>
-                            <input type="text" id="location" name="location" class="form-control" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>活動開始時間</label>
-                            <div class="datetime-group">
-                                <input type="date" name="start_date" class="form-control" required>
-                                <input type="time" name="start_time" class="form-control" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>活動結束時間</label>
-                            <div class="datetime-group">
-                                <input type="date" name="end_date" class="form-control" required>
-                                <input type="time" name="end_time" class="form-control" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>報名截止時間</label>
-                            <div class="datetime-group">
-                                <input type="date" name="registration_deadline_date" class="form-control">
-                                <input type="time" name="registration_deadline_time" class="form-control">
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="max_participants">活動名額</label>
-                            <input type="number" id="max_participants" name="max_participants" class="form-control" 
-                                   min="0" step="1" placeholder="不限制請留空">
-                        </div>
-                        
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> 新增活動
-                            </button>
-                            <a href="index.php" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> 取消
-                            </a>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
-        </main>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="start_date" class="form-label">開始時間 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="start_date" name="start_date" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="end_date" class="form-label">結束時間 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="end_date" name="end_date" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="location" class="form-label">活動地點 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="location" name="location" required>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="max_participants" class="form-label">人數上限</label>
+                            <input type="number" class="form-control" id="max_participants" name="max_participants" min="0">
+                            <div class="form-text">若不設定則表示不限人數</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="status" class="form-label">活動狀態 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="進行中">進行中</option>
+                                <option value="已結束">已結束</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description" class="form-label">活動說明 <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="description" name="description" rows="5" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="image" class="form-label">活動圖片</label>
+                    <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                </div>
+
+                <hr>
+
+                <div class="btn-toolbar justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 儲存活動
+                    </button>
+                    <a href="index.php" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> 取消
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 
+    <?php require_once '../includes/footer.php'; ?>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 圖片預覽
-        document.getElementById('image').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    let preview = document.querySelector('.image-preview');
-                    if (!preview) {
-                        preview = document.createElement('div');
-                        preview.className = 'image-preview';
-                        document.getElementById('image').parentNode.appendChild(preview);
-                    }
-                    preview.innerHTML = `<img src="${e.target.result}" alt="預覽圖片">`;
+    // 表單驗證
+    (function() {
+        'use strict';
+        var forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
                 }
-                reader.readAsDataURL(file);
-            }
+                form.classList.add('was-validated');
+            }, false);
         });
+    })();
 
-        // 表單驗證
-        document.querySelector('form').addEventListener('submit', function(e) {
-            const startDate = new Date(document.querySelector('[name="start_date"]').value + ' ' + document.querySelector('[name="start_time"]').value);
-            const endDate = new Date(document.querySelector('[name="end_date"]').value + ' ' + document.querySelector('[name="end_time"]').value);
-            
-            if (endDate < startDate) {
-                e.preventDefault();
-                alert('結束時間不能早於開始時間');
-            }
-        });
+    // 日期時間驗證
+    document.getElementById('end_date').addEventListener('change', function() {
+        var startDate = document.getElementById('start_date').value;
+        var endDate = this.value;
+        
+        if (startDate && endDate && startDate > endDate) {
+            alert('結束時間不能早於開始時間');
+            this.value = '';
+        }
+    });
     </script>
 </body>
 </html> 

@@ -54,7 +54,9 @@ $current_time = date('Y年m月d日 H:i');
             </div>
             
             <div class="header-profile">
-                <img src="/admin/assets/images/default-avatar.png" alt="管理員頭像" class="profile-avatar">
+                <div class="profile-avatar">
+                    <i class="fas fa-user-circle fa-2x"></i>
+                </div>
                 <div class="profile-info">
                     <span class="profile-name"><?php echo htmlspecialchars($_SESSION['admin_username'] ?? '管理員'); ?></span>
                     <span class="profile-role"><?php echo htmlspecialchars($_SESSION['admin_role'] ?? '管理員'); ?></span>

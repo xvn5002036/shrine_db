@@ -2,6 +2,7 @@
 require_once '../config/config.php';
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/auth.php';
 
 // 檢查 session 是否已經啟動
 if (session_status() === PHP_SESSION_NONE) {
@@ -26,13 +27,7 @@ try {
 
 // 如果已經登入，重定向到後台首頁
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-    if (isset($_SESSION['redirect_after_login'])) {
-        $redirect = $_SESSION['redirect_after_login'];
-        unset($_SESSION['redirect_after_login']);
-        header('Location: ' . $redirect);
-    } else {
-        header('Location: index.php');
-    }
+    header('Location: index.php');
     exit;
 }
 
@@ -94,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } catch (PDOException $e) {
             error_log('登入時發生錯誤：' . $e->getMessage());
-            $error = '系統錯誤：' . $e->getMessage();
+            $error = '系統錯誤，請稍後再試';
         }
     }
 }
@@ -122,6 +117,109 @@ if (isset($_GET['error'])) {
     <title><?php echo SITE_NAME; ?> - 後台管理登入</title>
     <link rel="stylesheet" href="../assets/css/admin-login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+        }
+        .login-container {
+            max-width: 400px;
+            width: 100%;
+            padding: 15px;
+        }
+        .login-box {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .login-header h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .login-header p {
+            color: #666;
+            margin: 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-size: 14px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-control:focus {
+            border-color: #4a90e2;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(74,144,226,0.2);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            background-color: #4a90e2;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #357abd;
+        }
+        .alert {
+            margin-bottom: 20px;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .login-footer a {
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .login-footer a:hover {
+            color: #4a90e2;
+        }
+        @media (max-width: 480px) {
+            .login-container {
+                width: 100%;
+                padding: 10px;
+            }
+            .login-box {
+                padding: 20px;
+            }
+        }
+    </style>
 </head>
 <body class="login-page">
     <div class="login-container">

@@ -87,357 +87,228 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>活動管理 - <?php echo SITE_NAME; ?></title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        /* 主要布局 */
-        .admin-container {
-            display: flex;
-            min-height: 100vh;
+        body {
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
         }
 
-        .admin-main {
-            flex: 1;
+        .main-content {
+            margin-left: 280px;
             padding: 20px;
-            margin-left: 250px;
-            width: calc(100% - 250px);
             min-height: 100vh;
             background-color: #f4f6f9;
         }
 
-        .content {
-            padding: 20px;
-            margin-top: 60px;
+        .page-header {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
-        /* 搜尋和篩選區域 */
-        .filters {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .search-form {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
 
-        .form-group {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        /* 表格樣式 */
         .table-container {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow: hidden;
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
         .table {
-            width: 100%;
-            border-collapse: collapse;
+            margin-bottom: 0;
         }
 
-        .table th,
-        .table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        .table th {
-            background-color: #f8f9fa;
-            font-weight: 500;
-            color: #333;
-        }
-
-        .table tr:hover {
-            background-color: #f5f5f5;
-        }
-
-        /* 狀態標籤 */
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-weight: 500;
-        }
-
-        .status-active {
-            background-color: #c3e6cb;
-            color: #155724;
-        }
-
-        .status-inactive {
-            background-color: #f5c6cb;
-            color: #721c24;
-        }
-
-        /* 操作按鈕 */
-        .actions {
+        .btn-toolbar {
             display: flex;
-            gap: 5px;
-        }
-
-        .btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            color: white;
-        }
-
-        .btn-primary {
-            background-color: #4a90e2;
-        }
-
-        .btn-success {
-            background-color: #28a745;
-        }
-
-        .btn-info {
-            background-color: #17a2b8;
-        }
-
-        .btn-warning {
-            background-color: #ffc107;
-            color: #000;
-        }
-
-        .btn-danger {
-            background-color: #dc3545;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        /* 分頁 */
-        .pagination {
-            display: flex;
-            justify-content: center;
             gap: 10px;
-            margin-top: 20px;
         }
 
-        .page-link {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            color: #4a90e2;
-            text-decoration: none;
+        .breadcrumb {
+            margin-bottom: 0;
+            padding: 0;
         }
 
-        .page-link.active {
-            background: #4a90e2;
-            color: white;
-            border-color: #4a90e2;
-        }
-
-        .page-info {
-            padding: 8px 12px;
-            color: #666;
-        }
-
-        /* 響應式設計 */
         @media (max-width: 768px) {
-            .admin-main {
+            .main-content {
                 margin-left: 0;
-                width: 100%;
-            }
-
-            .content {
-                padding: 10px;
-            }
-
-            .search-form {
-                flex-direction: column;
-            }
-
-            .form-group {
-                width: 100%;
-            }
-
-            .table-container {
-                overflow-x: auto;
-            }
-
-            .actions {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
+                padding: 15px;
             }
         }
     </style>
 </head>
-<body class="admin-page">
-    <div class="admin-container">
-        <?php include '../includes/sidebar.php'; ?>
-        
-        <main class="admin-main">
-            <?php include '../includes/header.php'; ?>
-            
-            <div class="content">
-                <div class="content-header">
-                    <h2>活動管理</h2>
-                    <nav class="breadcrumb">
-                        <a href="../index.php">首頁</a> /
-                        <span>活動管理</span>
-                    </nav>
+<body>
+    <?php require_once '../includes/header.php'; ?>
+    
+    <div class="main-content">
+        <div class="page-header">
+            <div class="toolbar">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="../index.php">首頁</a></li>
+                        <li class="breadcrumb-item active">活動管理</li>
+                    </ol>
+                </nav>
+                <div class="btn-toolbar">
+                    <a href="add.php" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 新增活動
+                    </a>
                 </div>
-
-                <!-- 搜尋和篩選 -->
-                <div class="filters">
-                    <form method="get" class="search-form">
-                        <div class="form-group">
-                            <input type="text" name="search" class="form-control" 
-                                   placeholder="搜尋活動標題、說明或地點..." 
-                                   value="<?php echo htmlspecialchars($search); ?>">
-                        </div>
-                        <div class="form-group">
-                            <select name="type_id" class="form-control">
-                                <option value="">所有類型</option>
-                                <?php foreach ($event_types as $type): ?>
-                                    <option value="<?php echo $type['id']; ?>" 
-                                            <?php echo $type_id == $type['id'] ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($type['name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <select name="status" class="form-control">
-                                <option value="">所有狀態</option>
-                                <option value="1" <?php echo $status === '1' ? 'selected' : ''; ?>>進行中</option>
-                                <option value="0" <?php echo $status === '0' ? 'selected' : ''; ?>>已結束</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex: 0 0 auto;">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-search"></i> 搜尋
-                            </button>
-                            <a href="add.php" class="btn btn-success">
-                                <i class="fas fa-plus"></i> 新增活動
-                            </a>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- 活動列表 -->
-                <div class="table-container">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>活動標題</th>
-                                <th>類型</th>
-                                <th>時間</th>
-                                <th>地點</th>
-                                <th>報名狀況</th>
-                                <th>狀態</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($events)): ?>
-                                <tr>
-                                    <td colspan="7" class="text-center">沒有找到任何活動</td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($events as $event): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($event['title']); ?></td>
-                                        <td><?php echo htmlspecialchars($event['type_name'] ?? '未分類'); ?></td>
-                                        <td>
-                                            <?php 
-                                            echo date('Y/m/d H:i', strtotime($event['start_date']));
-                                            if ($event['start_date'] != $event['end_date']) {
-                                                echo '<br>至<br>' . date('Y/m/d H:i', strtotime($event['end_date']));
-                                            }
-                                            ?>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($event['location']); ?></td>
-                                        <td>
-                                            <?php
-                                            if ($event['max_participants']) {
-                                                echo $event['confirmed_participants'] . ' / ' . $event['max_participants'];
-                                            } else {
-                                                echo $event['confirmed_participants'] . ' 人';
-                                            }
-                                            ?>
-                                        </td>
-                                        <td>
-                                            <span class="status-badge status-<?php echo $event['status'] ? 'active' : 'inactive'; ?>">
-                                                <?php echo $event['status'] ? '進行中' : '已結束'; ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="actions">
-                                                <a href="edit.php?id=<?php echo $event['id']; ?>" 
-                                                   class="btn btn-info" title="編輯">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a href="registrations.php?event_id=<?php echo $event['id']; ?>" 
-                                                   class="btn btn-primary" title="報名管理">
-                                                    <i class="fas fa-users"></i>
-                                                </a>
-                                                <a href="delete.php?id=<?php echo $event['id']; ?>" 
-                                                   class="btn btn-danger" 
-                                                   onclick="return confirm('確定要刪除此活動？')"
-                                                   title="刪除">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- 分頁 -->
-                <?php if ($totalPages > 1): ?>
-                    <div class="pagination">
-                        <?php if ($page > 1): ?>
-                            <a href="?page=1<?php echo $search ? "&search=$search" : ''; ?><?php echo $type_id ? "&type_id=$type_id" : ''; ?><?php echo $status !== '' ? "&status=$status" : ''; ?>" 
-                               class="page-link">&laquo; 第一頁</a>
-                            <a href="?page=<?php echo $page-1; ?><?php echo $search ? "&search=$search" : ''; ?><?php echo $type_id ? "&type_id=$type_id" : ''; ?><?php echo $status !== '' ? "&status=$status" : ''; ?>" 
-                               class="page-link">&lsaquo; 上一頁</a>
-                        <?php endif; ?>
-                        
-                        <span class="page-info">第 <?php echo $page; ?> 頁，共 <?php echo $totalPages; ?> 頁</span>
-                        
-                        <?php if ($page < $totalPages): ?>
-                            <a href="?page=<?php echo $page+1; ?><?php echo $search ? "&search=$search" : ''; ?><?php echo $type_id ? "&type_id=$type_id" : ''; ?><?php echo $status !== '' ? "&status=$status" : ''; ?>" 
-                               class="page-link">下一頁 &rsaquo;</a>
-                            <a href="?page=<?php echo $totalPages; ?><?php echo $search ? "&search=$search" : ''; ?><?php echo $type_id ? "&type_id=$type_id" : ''; ?><?php echo $status !== '' ? "&status=$status" : ''; ?>" 
-                               class="page-link">最後一頁 &raquo;</a>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
             </div>
-        </main>
+        </div>
+
+        <!-- 搜尋表單 -->
+        <div class="search-form">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="search" 
+                           placeholder="搜尋活動標題、說明或地點" 
+                           value="<?php echo htmlspecialchars($search); ?>">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="type_id">
+                        <option value="">所有類型</option>
+                        <?php foreach ($event_types as $type): ?>
+                            <option value="<?php echo $type['id']; ?>" 
+                                <?php echo $type_id == $type['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($type['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="status">
+                        <option value="">所有狀態</option>
+                        <option value="進行中" <?php echo $status === '進行中' ? 'selected' : ''; ?>>進行中</option>
+                        <option value="已結束" <?php echo $status === '已結束' ? 'selected' : ''; ?>>已結束</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">搜尋</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 活動列表 -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>活動標題</th>
+                            <th>類型</th>
+                            <th>時間</th>
+                            <th>地點</th>
+                            <th>報名狀況</th>
+                            <th>狀態</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($events)): ?>
+                            <tr>
+                                <td colspan="7" class="text-center">沒有找到相關活動</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($events as $event): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($event['title']); ?></td>
+                                    <td><?php echo htmlspecialchars($event['type_name']); ?></td>
+                                    <td>
+                                        <?php 
+                                        echo date('Y/m/d H:i', strtotime($event['start_date']));
+                                        echo '<br>至<br>';
+                                        echo date('Y/m/d H:i', strtotime($event['end_date']));
+                                        ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($event['location']); ?></td>
+                                    <td>
+                                        <?php 
+                                        echo $event['confirmed_participants'] . ' / ';
+                                        echo $event['max_participants'] ?: '不限';
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge <?php echo $event['status'] === '進行中' ? 'bg-success' : 'bg-secondary'; ?>">
+                                            <?php echo $event['status']; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="edit.php?id=<?php echo $event['id']; ?>" 
+                                               class="btn btn-sm btn-info" title="編輯">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="participants.php?id=<?php echo $event['id']; ?>" 
+                                               class="btn btn-sm btn-primary" title="報名管理">
+                                                <i class="fas fa-users"></i>
+                                            </a>
+                                            <a href="delete.php?id=<?php echo $event['id']; ?>" 
+                                               class="btn btn-sm btn-danger" 
+                                               onclick="return confirm('確定要刪除此活動嗎？')" 
+                                               title="刪除">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 分頁 -->
+        <?php if ($totalPages > 1): ?>
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <?php if ($page > 1): ?>
+                        <li class="page-item">
+                            <a class="page-link" href="?page=<?php echo ($page-1); ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_id; ?>&status=<?php echo urlencode($status); ?>">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                        <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_id; ?>&status=<?php echo urlencode($status); ?>">
+                                <?php echo $i; ?>
+                            </a>
+                        </li>
+                    <?php endfor; ?>
+
+                    <?php if ($page < $totalPages): ?>
+                        <li class="page-item">
+                            <a class="page-link" href="?page=<?php echo ($page+1); ?>&search=<?php echo urlencode($search); ?>&type_id=<?php echo $type_id; ?>&status=<?php echo urlencode($status); ?>">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        <?php endif; ?>
     </div>
+
+    <?php require_once '../includes/footer.php'; ?>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

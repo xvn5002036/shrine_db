@@ -2,10 +2,18 @@
 require_once '../config/config.php';
 require_once '../config/database.php';
 require_once '../includes/functions.php';
-require_once '../includes/auth.php';
 
-// 檢查管理員權限
-checkAdminRole();
+// 檢查是否登入
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: login.php');
+    exit;
+}
+
+// 檢查是否有管理員權限
+if (!isset($_SESSION['admin_role']) || $_SESSION['admin_role'] !== 'admin') {
+    header('Location: index.php');
+    exit;
+}
 
 // 設定備份目錄
 $backup_dir = '../backups';
@@ -25,9 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $backup_path = $backup_dir . '/' . $filename;
 
                     // 使用 mysqldump 命令，修正路徑問題
-                    $mysqldump_path = 'C:/xampp/mysql/bin/mysqldump';
+                    $mysqldump_path = 'C:/xampp/mysql/bin/mysqldump.exe';
                     $command = sprintf(
-                        '"%s" -h %s -u %s -p%s %s > "%s"',
+                        '"%s" --host=%s --user=%s --password=%s --databases %s > "%s"',
                         $mysqldump_path,
                         DB_HOST,
                         DB_USER,
@@ -39,7 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // 執行命令並檢查結果
                     $output = [];
                     $return_var = 0;
-                    exec($command, $output, $return_var);
+                    
+                    // 使用 system() 而不是 exec()
+                    system($command, $return_var);
                     
                     if ($return_var === 0 && file_exists($backup_path)) {
                         // 記錄備份資訊到資料庫
@@ -47,11 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             INSERT INTO backups (filename, type, created_by, created_at)
                             VALUES (?, 'database', ?, NOW())
                         ");
-                        $stmt->execute([$filename, $_SESSION['user_id']]);
+                        $stmt->execute([$filename, $_SESSION['admin_id']]);
                         
                         $_SESSION['success'] = '資料庫備份成功';
                     } else {
-                        throw new Exception('資料庫備份失敗：' . implode("\n", $output));
+                        throw new Exception('資料庫備份失敗，請確認 mysqldump 路徑是否正確');
                     }
                     break;
 
@@ -79,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 INSERT INTO backups (filename, type, created_by, created_at)
                                 VALUES (?, 'files', ?, NOW())
                             ");
-                            $stmt->execute([$filename, $_SESSION['user_id']]);
+                            $stmt->execute([$filename, $_SESSION['admin_id']]);
 
                             $_SESSION['success'] = '檔案備份成功';
                         } else {
@@ -137,119 +147,117 @@ function addFolderToZip($folder, $zipArchive, $subfolder = '') {
 }
 ?>
 
-<div class="container-fluid">
-    <div class="row">
-        <?php require_once 'includes/sidebar.php'; ?>
-        
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">備份管理</h1>
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="page-header">
+            <div class="toolbar">
+                <h1>備份管理</h1>
             </div>
+        </div>
 
-            <?php if (isset($_SESSION['error'])): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <?php 
-                    echo $_SESSION['error'];
-                    unset($_SESSION['error']);
-                    ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <?php endif; ?>
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?php 
+                echo $_SESSION['error'];
+                unset($_SESSION['error']);
+                ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
 
-            <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <?php 
-                    echo $_SESSION['success'];
-                    unset($_SESSION['success']);
-                    ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <?php endif; ?>
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <?php 
+                echo $_SESSION['success'];
+                unset($_SESSION['success']);
+                ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
 
-            <!-- 備份操作 -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">建立備份</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <form method="POST" class="mb-3">
-                                <input type="hidden" name="backup_type" value="database">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-database"></i> 備份資料庫
-                                </button>
-                            </form>
-                        </div>
-                        <div class="col-md-6">
-                            <form method="POST">
-                                <input type="hidden" name="backup_type" value="files">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-file-archive"></i> 備份檔案
-                                </button>
-                            </form>
-                        </div>
+        <!-- 備份操作 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">建立備份</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <form method="POST" class="mb-3">
+                            <input type="hidden" name="backup_type" value="database">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-database"></i> 備份資料庫
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <form method="POST">
+                            <input type="hidden" name="backup_type" value="files">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-file-archive"></i> 備份檔案
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- 備份列表 -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">備份列表</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
+        <!-- 備份列表 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">備份列表</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>檔案名稱</th>
+                                <th>類型</th>
+                                <th>建立者</th>
+                                <th>建立時間</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($backups)): ?>
                                 <tr>
-                                    <th>檔案名稱</th>
-                                    <th>類型</th>
-                                    <th>建立者</th>
-                                    <th>建立時間</th>
-                                    <th>操作</th>
+                                    <td colspan="5" class="text-center">尚無備份記錄</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($backups)): ?>
+                            <?php else: ?>
+                                <?php foreach ($backups as $backup): ?>
                                     <tr>
-                                        <td colspan="5" class="text-center">尚無備份記錄</td>
+                                        <td><?php echo htmlspecialchars($backup['filename']); ?></td>
+                                        <td>
+                                            <?php if ($backup['type'] === 'database'): ?>
+                                                <span class="badge bg-primary">資料庫</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-success">檔案</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($backup['created_by_name']); ?></td>
+                                        <td><?php echo date('Y-m-d H:i:s', strtotime($backup['created_at'])); ?></td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="download_backup.php?id=<?php echo $backup['id']; ?>" 
+                                                   class="btn btn-sm btn-info">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                <a href="delete_backup.php?id=<?php echo $backup['id']; ?>" 
+                                                   class="btn btn-sm btn-danger"
+                                                   onclick="return confirm('確定要刪除此備份？')">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
                                     </tr>
-                                <?php else: ?>
-                                    <?php foreach ($backups as $backup): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($backup['filename']); ?></td>
-                                            <td>
-                                                <?php if ($backup['type'] === 'database'): ?>
-                                                    <span class="badge bg-primary">資料庫</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-success">檔案</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td><?php echo htmlspecialchars($backup['created_by_name']); ?></td>
-                                            <td><?php echo date('Y-m-d H:i:s', strtotime($backup['created_at'])); ?></td>
-                                            <td>
-                                                <div class="btn-group">
-                                                    <a href="download_backup.php?id=<?php echo $backup['id']; ?>" 
-                                                       class="btn btn-sm btn-info">
-                                                        <i class="fas fa-download"></i>
-                                                    </a>
-                                                    <a href="delete_backup.php?id=<?php echo $backup['id']; ?>" 
-                                                       class="btn btn-sm btn-danger"
-                                                       onclick="return confirm('確定要刪除此備份？')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 </div>
 

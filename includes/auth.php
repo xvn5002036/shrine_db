@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
  * @return bool
  */
 function isLoggedIn() {
-    return isset($_SESSION['user_id']);
+    return isset($_SESSION['user_id']) && isset($_SESSION['username']);
 }
 
 /**
@@ -17,7 +17,8 @@ function isLoggedIn() {
  * @return bool
  */
 function isAdmin() {
-    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
+    return isset($_SESSION['user_role']) && 
+           ($_SESSION['user_role'] === 'admin' || $_SESSION['user_role'] === 'staff');
 }
 
 /**
@@ -25,8 +26,21 @@ function isAdmin() {
  * 如果不是管理員則重定向到登入頁面
  */
 function checkAdminRole() {
-    if (!isLoggedIn() || !isAdmin()) {
-        $_SESSION['error'] = '請先登入管理員帳號';
+    // 檢查是否在登入頁面
+    $current_script = basename($_SERVER['SCRIPT_NAME']);
+    if ($current_script === 'login.php') {
+        return;
+    }
+
+    // 檢查是否已登入且是管理員
+    if (!isLoggedIn()) {
+        $_SESSION['error'] = '請先登入';
+        header('Location: /admin/login.php');
+        exit;
+    }
+
+    if (!isAdmin()) {
+        $_SESSION['error'] = '您沒有管理員權限';
         header('Location: /admin/login.php');
         exit;
     }
@@ -50,7 +64,7 @@ function checkUserRole() {
  */
 function loginUser($user) {
     $_SESSION['user_id'] = $user['id'];
-    $_SESSION['user_name'] = $user['username'];
+    $_SESSION['username'] = $user['username'];
     $_SESSION['user_role'] = $user['role'];
 }
 
@@ -58,9 +72,19 @@ function loginUser($user) {
  * 登出使用者
  */
 function logout() {
-    session_unset();
+    // 清除所有 session 變數
+    $_SESSION = array();
+    
+    // 如果有設置 session cookie，也要清除
+    if (isset($_COOKIE[session_name()])) {
+        setcookie(session_name(), '', time()-3600, '/');
+    }
+    
+    // 銷毀 session
     session_destroy();
-    header('Location: /login.php');
+    
+    // 重定向到登入頁面
+    header('Location: /admin/login.php');
     exit;
 }
 ?> 
