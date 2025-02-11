@@ -62,7 +62,7 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
-        
+
         // 網站基本設定
         $site_settings = [
             'site_name' => $_POST['site_name'] ?? '',
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'site_address' => $_POST['site_address'] ?? '',
             'business_hours' => $_POST['business_hours'] ?? ''
         ];
-        
+
         // 系統設定
         $system_settings = [
             'maintenance_mode' => isset($_POST['maintenance_mode']) ? '1' : '0',
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'items_per_page' => $_POST['items_per_page'] ?? '10'
         ];
         
-        $stmt = $pdo->prepare("
+            $stmt = $pdo->prepare("
             UPDATE settings 
             SET setting_value = ? 
             WHERE setting_key = ?
@@ -97,12 +97,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $pdo->commit();
         $_SESSION['success'] = '設定已成功更新';
-        
+
     } catch (Exception $e) {
         $pdo->rollBack();
         $_SESSION['error'] = '更新設定時發生錯誤：' . $e->getMessage();
     }
-    
+
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
@@ -161,45 +161,45 @@ require_once '../includes/header.php';
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="site_name" class="form-label">網站名稱</label>
-                                <input type="text" class="form-control" id="site_name" name="site_name"
-                                       value="<?php echo htmlspecialchars($settings['site_name'] ?? ''); ?>" required>
+                            <label for="site_name" class="form-label">網站名稱</label>
+                            <input type="text" class="form-control" id="site_name" name="site_name" 
+                                   value="<?php echo htmlspecialchars($settings['site_name'] ?? ''); ?>" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="site_email" class="form-label">網站信箱</label>
-                                <input type="email" class="form-control" id="site_email" name="site_email"
-                                       value="<?php echo htmlspecialchars($settings['site_email'] ?? ''); ?>" required>
+                            <label for="site_email" class="form-label">網站信箱</label>
+                            <input type="email" class="form-control" id="site_email" name="site_email" 
+                                   value="<?php echo htmlspecialchars($settings['site_email'] ?? ''); ?>" required>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="site_description" class="form-label">網站描述</label>
                         <textarea class="form-control" id="site_description" name="site_description" rows="3"><?php echo htmlspecialchars($settings['site_description'] ?? ''); ?></textarea>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="site_phone" class="form-label">聯絡電話</label>
-                                <input type="text" class="form-control" id="site_phone" name="site_phone"
-                                       value="<?php echo htmlspecialchars($settings['site_phone'] ?? ''); ?>">
+                            <label for="site_phone" class="form-label">聯絡電話</label>
+                            <input type="text" class="form-control" id="site_phone" name="site_phone" 
+                                   value="<?php echo htmlspecialchars($settings['site_phone'] ?? ''); ?>">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="business_hours" class="form-label">營業時間</label>
-                                <input type="text" class="form-control" id="business_hours" name="business_hours"
-                                       value="<?php echo htmlspecialchars($settings['business_hours'] ?? ''); ?>">
+                            <label for="business_hours" class="form-label">營業時間</label>
+                            <input type="text" class="form-control" id="business_hours" name="business_hours" 
+                                   value="<?php echo htmlspecialchars($settings['business_hours'] ?? ''); ?>">
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="site_address" class="form-label">地址</label>
-                        <input type="text" class="form-control" id="site_address" name="site_address"
+                        <input type="text" class="form-control" id="site_address" name="site_address" 
                                value="<?php echo htmlspecialchars($settings['site_address'] ?? ''); ?>">
                     </div>
                 </div>
@@ -213,39 +213,39 @@ require_once '../includes/header.php';
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="maintenance_mode" 
                                            name="maintenance_mode" <?php echo ($settings['maintenance_mode'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="maintenance_mode">維護模式</label>
-                                </div>
+                            <label class="form-check-label" for="maintenance_mode">維護模式</label>
+                        </div>
                                 <small class="text-muted">啟用後，只有管理員可以訪問網站</small>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="registration_enabled" 
                                            name="registration_enabled" <?php echo ($settings['registration_enabled'] ?? '1') === '1' ? 'checked' : ''; ?>>
                                     <label class="form-check-label" for="registration_enabled">開放註冊</label>
-                                </div>
+                        </div>
                                 <small class="text-muted">允許新用戶註冊</small>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="email_notification" 
                                            name="email_notification" <?php echo ($settings['email_notification'] ?? '1') === '1' ? 'checked' : ''; ?>>
                                     <label class="form-check-label" for="email_notification">電子郵件通知</label>
                                 </div>
                                 <small class="text-muted">啟用系統電子郵件通知功能</small>
                             </div>
-                        </div>
-                        
+                    </div>
+
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="items_per_page" class="form-label">每頁顯示數量</label>
-                                <input type="number" class="form-control" id="items_per_page" name="items_per_page"
-                                       value="<?php echo htmlspecialchars($settings['items_per_page'] ?? '10'); ?>"
+                    <div class="mb-3">
+                        <label for="items_per_page" class="form-label">每頁顯示數量</label>
+                        <input type="number" class="form-control" id="items_per_page" name="items_per_page" 
+                               value="<?php echo htmlspecialchars($settings['items_per_page'] ?? '10'); ?>" 
                                        min="5" max="100">
                                 <small class="text-muted">設定列表頁面每頁顯示的項目數量</small>
                             </div>

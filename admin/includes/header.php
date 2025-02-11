@@ -41,13 +41,22 @@ $current_time = date('Y年m月d日 H:i');
                     <?php
                     // 獲取未讀通知數量
                     try {
-                        $stmt = $pdo->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0");
+                        $notification_sql = "SELECT COUNT(*) FROM notifications WHERE is_read = 0";
+                        if (isset($_SESSION['admin_id'])) {
+                            $notification_sql .= " AND (user_id = ? OR user_id IS NULL)";
+                            $stmt = $pdo->prepare($notification_sql);
+                            $stmt->execute([$_SESSION['admin_id']]);
+                        } else {
+                            $stmt = $pdo->prepare($notification_sql);
+                            $stmt->execute();
+                        }
                         $unread_count = $stmt->fetchColumn();
                         if ($unread_count > 0) {
                             echo "<span class='notification-badge'>$unread_count</span>";
                         }
                     } catch (PDOException $e) {
                         error_log("Error getting notification count: " . $e->getMessage());
+                        // 不顯示錯誤給用戶看
                     }
                     ?>
                 </a>
