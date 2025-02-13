@@ -6,6 +6,9 @@ require_once '../../includes/functions.php';
 // 檢查管理員是否已登入
 checkAdminLogin();
 
+// 設置頁面標題
+$page_title = '編輯活動';
+
 // 獲取活動 ID
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -51,7 +54,7 @@ try {
         $registration_deadline_date = trim($_POST['registration_deadline_date'] ?? '');
         $registration_deadline_time = trim($_POST['registration_deadline_time'] ?? '');
         $max_participants = trim($_POST['max_participants'] ?? '');
-        $status = isset($_POST['status']) ? 1 : 0;
+        $status = isset($_POST['status']) ? 'draft' : 'published';
         
         // 驗證
         if (empty($title)) {
@@ -136,7 +139,7 @@ try {
                     $id
                 ]);
                 
-                $success = true;
+                $_SESSION['success'] = '活動更新成功！' . ($status === 'published' ? '目前狀態：開放報名' : '目前狀態：關閉報名');
                 
                 // 重新獲取活動資料
                 $stmt = $pdo->prepare("
@@ -170,107 +173,13 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>編輯活動 - <?php echo SITE_NAME; ?></title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Admin Style -->
+    <link rel="stylesheet" href="/assets/css/admin.css">
     <style>
-        .admin-container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        .admin-main {
-            flex: 1;
-            padding: 20px;
-            margin-left: 250px;
-            width: calc(100% - 250px);
-            min-height: 100vh;
-            background-color: #f4f6f9;
-        }
-
-        .content {
-            padding: 20px;
-            margin-top: 60px;
-        }
-
-        .form-container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        .datetime-group {
-            display: flex;
-            gap: 10px;
-        }
-
-        .datetime-group .form-control {
-            flex: 1;
-        }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-
-        .alert-danger {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-        }
-
-        .alert-success {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
-
-        .form-actions {
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .btn-primary {
-            background-color: #4a90e2;
-            color: white;
-        }
-
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-
         .image-preview {
             margin-top: 10px;
             max-width: 300px;
@@ -282,150 +191,186 @@ try {
             border-radius: 4px;
         }
 
+        .datetime-group {
+            display: flex;
+            gap: 10px;
+        }
+
         @media (max-width: 768px) {
-            .admin-main {
-                margin-left: 0;
-                width: 100%;
-            }
-
-            .content {
-                padding: 10px;
-            }
-
             .datetime-group {
                 flex-direction: column;
             }
         }
     </style>
 </head>
-<body class="admin-page">
+<body class="admin-body">
     <div class="admin-container">
-        <?php include '../includes/sidebar.php'; ?>
+        <?php require_once '../includes/sidebar.php'; ?>
         
         <main class="admin-main">
-            <?php include '../includes/header.php'; ?>
-            
-            <div class="content">
-                <div class="content-header">
-                    <h2>編輯活動</h2>
-                    <nav class="breadcrumb">
-                        <a href="../index.php">首頁</a> /
-                        <a href="index.php">活動管理</a> /
-                        <span>編輯活動</span>
-                    </nav>
+            <?php require_once '../includes/header.php'; ?>
+            <div class="container-fluid">
+                <div class="page-header">
+                    <div class="toolbar">
+                        <h1><i class="fas fa-edit"></i> 編輯活動</h1>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="../index.php">首頁</a></li>
+                                <li class="breadcrumb-item"><a href="index.php">活動管理</a></li>
+                                <li class="breadcrumb-item active">編輯活動</li>
+                            </ol>
+                        </nav>
+                    </div>
                 </div>
 
                 <?php if ($error): ?>
-                    <div class="alert alert-danger"><?php echo $error; ?></div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <?php echo $error; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 <?php endif; ?>
 
                 <?php if ($success): ?>
-                    <div class="alert alert-success">活動更新成功！</div>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <?php echo $success; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 <?php endif; ?>
 
-                <div class="form-container">
-                    <form method="post" enctype="multipart/form-data">
-                        <div class="form-group">
-                            <label for="title">活動標題</label>
-                            <input type="text" id="title" name="title" class="form-control" 
-                                   value="<?php echo htmlspecialchars($event['title']); ?>" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event_type_id">活動類型</label>
-                            <select id="event_type_id" name="event_type_id" class="form-control" required>
-                                <option value="">選擇活動類型</option>
-                                <?php foreach ($event_types as $type): ?>
-                                    <option value="<?php echo $type['id']; ?>" 
-                                            <?php echo $event['event_type_id'] == $type['id'] ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($type['name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="description">活動說明</label>
-                            <textarea id="description" name="description" class="form-control" 
-                                      rows="6" required><?php echo htmlspecialchars($event['description']); ?></textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="image">活動圖片</label>
-                            <input type="file" id="image" name="image" class="form-control" accept="image/*">
-                            <?php if ($event['image']): ?>
-                                <div class="image-preview">
-                                    <img src="../../<?php echo htmlspecialchars($event['image']); ?>" alt="活動圖片">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                            <div class="row mb-3">
+                                <div class="col-md-8">
+                                    <label for="title" class="form-label">活動標題 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="title" name="title" 
+                                           value="<?php echo htmlspecialchars($event['title']); ?>" required>
+                                    <div class="invalid-feedback">請輸入活動標題</div>
                                 </div>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="location">活動地點</label>
-                            <input type="text" id="location" name="location" class="form-control" 
-                                   value="<?php echo htmlspecialchars($event['location']); ?>" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>活動開始時間</label>
-                            <div class="datetime-group">
-                                <input type="date" name="start_date" class="form-control" 
-                                       value="<?php echo date('Y-m-d', strtotime($event['start_date'])); ?>" required>
-                                <input type="time" name="start_time" class="form-control" 
-                                       value="<?php echo date('H:i', strtotime($event['start_date'])); ?>" required>
+                                <div class="col-md-4">
+                                    <label for="event_type_id" class="form-label">活動類型 <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="event_type_id" name="event_type_id" required>
+                                        <option value="">選擇活動類型</option>
+                                        <?php foreach ($event_types as $type): ?>
+                                            <option value="<?php echo $type['id']; ?>" 
+                                                    <?php echo $event['event_type_id'] == $type['id'] ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($type['name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="invalid-feedback">請選擇活動類型</div>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>活動結束時間</label>
-                            <div class="datetime-group">
-                                <input type="date" name="end_date" class="form-control" 
-                                       value="<?php echo date('Y-m-d', strtotime($event['end_date'])); ?>" required>
-                                <input type="time" name="end_time" class="form-control" 
-                                       value="<?php echo date('H:i', strtotime($event['end_date'])); ?>" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>報名截止時間</label>
-                            <div class="datetime-group">
-                                <input type="date" name="registration_deadline_date" class="form-control" 
-                                       value="<?php echo $event['registration_deadline'] ? date('Y-m-d', strtotime($event['registration_deadline'])) : ''; ?>">
-                                <input type="time" name="registration_deadline_time" class="form-control" 
-                                       value="<?php echo $event['registration_deadline'] ? date('H:i', strtotime($event['registration_deadline'])) : ''; ?>">
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="max_participants">活動名額</label>
-                            <input type="number" id="max_participants" name="max_participants" class="form-control" 
-                                   min="0" step="1" placeholder="不限制請留空"
-                                   value="<?php echo $event['max_participants']; ?>">
-                        </div>
 
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" name="status" value="1" 
-                                       <?php echo $event['status'] ? 'checked' : ''; ?>>
-                                活動進行中
-                            </label>
-                        </div>
-                        
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> 儲存變更
-                            </button>
-                            <a href="index.php" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> 取消
-                            </a>
-                        </div>
-                    </form>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">活動說明 <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="description" name="description" rows="6" required><?php echo htmlspecialchars($event['description']); ?></textarea>
+                                <div class="invalid-feedback">請輸入活動說明</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="location" class="form-label">活動地點 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="location" name="location" 
+                                       value="<?php echo htmlspecialchars($event['location']); ?>" required>
+                                <div class="invalid-feedback">請輸入活動地點</div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">活動開始時間 <span class="text-danger">*</span></label>
+                                    <div class="datetime-group">
+                                        <input type="date" name="start_date" class="form-control" 
+                                               value="<?php echo date('Y-m-d', strtotime($event['start_date'])); ?>" required>
+                                        <input type="time" name="start_time" class="form-control" 
+                                               value="<?php echo date('H:i', strtotime($event['start_date'])); ?>" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">活動結束時間 <span class="text-danger">*</span></label>
+                                    <div class="datetime-group">
+                                        <input type="date" name="end_date" class="form-control" 
+                                               value="<?php echo date('Y-m-d', strtotime($event['end_date'])); ?>" required>
+                                        <input type="time" name="end_time" class="form-control" 
+                                               value="<?php echo date('H:i', strtotime($event['end_date'])); ?>" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">報名截止時間</label>
+                                    <div class="datetime-group">
+                                        <input type="date" name="registration_deadline_date" class="form-control" 
+                                               value="<?php echo $event['registration_deadline'] ? date('Y-m-d', strtotime($event['registration_deadline'])) : ''; ?>">
+                                        <input type="time" name="registration_deadline_time" class="form-control" 
+                                               value="<?php echo $event['registration_deadline'] ? date('H:i', strtotime($event['registration_deadline'])) : ''; ?>">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="max_participants" class="form-label">活動名額</label>
+                                    <input type="number" class="form-control" id="max_participants" name="max_participants" 
+                                           min="0" step="1" placeholder="不限制請留空"
+                                           value="<?php echo $event['max_participants']; ?>">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="image" class="form-label">活動圖片</label>
+                                <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                                <div class="form-text">支援 JPG、PNG、GIF 格式，檔案大小不超過 5MB</div>
+                                <?php if ($event['image']): ?>
+                                    <div class="image-preview mt-2">
+                                        <img src="../../<?php echo htmlspecialchars($event['image']); ?>" alt="活動圖片" class="img-thumbnail">
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="status" name="status" 
+                                           value="draft" <?php echo $event['status'] === 'draft' ? 'checked' : ''; ?>>
+                                    <label class="form-check-label" for="status">關閉報名</label>
+                                </div>
+                                <div class="form-text">
+                                    目前狀態：<?php echo $event['status'] === 'published' ? '<span class="text-success">開放報名中</span>' : '<span class="text-danger">已關閉報名</span>'; ?>
+                                </div>
+                            </div>
+
+                            <div class="text-end">
+                                <a href="index.php" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> 取消
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> 儲存變更
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // 表單驗證
+        (function() {
+            'use strict';
+            var forms = document.querySelectorAll('.needs-validation');
+            Array.prototype.slice.call(forms).forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+
         // 圖片預覽
         document.getElementById('image').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -435,16 +380,16 @@ try {
                     let preview = document.querySelector('.image-preview');
                     if (!preview) {
                         preview = document.createElement('div');
-                        preview.className = 'image-preview';
+                        preview.className = 'image-preview mt-2';
                         document.getElementById('image').parentNode.appendChild(preview);
                     }
-                    preview.innerHTML = `<img src="${e.target.result}" alt="預覽圖片">`;
+                    preview.innerHTML = `<img src="${e.target.result}" alt="預覽圖片" class="img-thumbnail">`;
                 }
                 reader.readAsDataURL(file);
             }
         });
 
-        // 表單驗證
+        // 日期時間驗證
         document.querySelector('form').addEventListener('submit', function(e) {
             const startDate = new Date(document.querySelector('[name="start_date"]').value + ' ' + document.querySelector('[name="start_time"]').value);
             const endDate = new Date(document.querySelector('[name="end_date"]').value + ' ' + document.querySelector('[name="end_time"]').value);

@@ -8,23 +8,52 @@ body {
 .admin-container {
     display: flex;
     min-height: 100vh;
-    padding-left: 250px; /* 側邊欄寬度 */
+    position: relative;
+}
+
+.admin-sidebar {
+    width: 250px;
+    min-height: 100vh;
+    background-color: #343a40;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1000;
+    overflow-y: auto;
 }
 
 .admin-main {
     flex: 1;
-    padding: 80px 20px 20px 20px; /* 上方增加 padding 避免被頂部欄遮蓋 */
     min-height: 100vh;
-    width: 100%;
-    box-sizing: border-box;
-    position: relative;
+    margin-left: 250px;
     background-color: #f4f6f9;
+    padding: 20px;
 }
 
+/* 內容區域 */
 .content {
-    max-width: 1400px;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     margin: 0 auto;
-    padding: 0 15px;
+    max-width: 1200px;
+}
+
+.content-header {
+    margin-bottom: 20px;
+}
+
+/* 表單容器 */
+.form-container {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* 快速操作按鈕 */
@@ -266,23 +295,21 @@ body {
 }
 
 @media (max-width: 768px) {
-    .admin-container {
-        padding-left: 0;
+    .admin-sidebar {
+        transform: translateX(-250px);
+        transition: transform 0.3s ease;
+    }
+
+    .admin-sidebar.show {
+        transform: translateX(0);
     }
 
     .admin-main {
-        padding: 70px 15px 15px 15px;
+        margin-left: 0;
+        width: 100%;
     }
-
-    .stat-cards {
-        grid-template-columns: 1fr;
-    }
-
-    .quick-actions {
-        grid-template-columns: 1fr;
-    }
-
+    
     .content {
-        padding: 0 10px;
+        padding: 15px;
     }
 } 

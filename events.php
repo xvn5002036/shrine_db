@@ -35,7 +35,7 @@ if ($time_filter) {
 // 獲取活動列表
 try {
     // 構建基本的 WHERE 子句
-    $where_clause = "WHERE e.status = 1";
+    $where_clause = "WHERE e.status = 'published'";
     
     // 根據時間篩選添加條件
     if ($time_filter === 'upcoming') {
@@ -104,6 +104,30 @@ try {
 } catch (PDOException $e) {
     error_log('獲取活動類型錯誤：' . $e->getMessage());
     $event_types = [];
+}
+
+// 如果是單一活動頁面，獲取活動詳細資訊
+if (isset($_GET['id'])) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT e.*, et.name as type_name,
+                (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.id AND status = 'confirmed') as confirmed_count
+            FROM events e
+            LEFT JOIN event_types et ON e.event_type_id = et.id
+            WHERE e.id = ? AND e.status = 'published'
+        ");
+        $stmt->execute([$_GET['id']]);
+        $event = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$event) {
+            header('Location: events.php');
+            exit;
+        }
+    } catch (PDOException $e) {
+        error_log('獲取活動詳情錯誤：' . $e->getMessage());
+        header('Location: events.php');
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -209,16 +233,12 @@ try {
                             <?php 
                             $start_date = new DateTime($event['start_date']);
                             $end_date = new DateTime($event['end_date']);
-                            echo $start_date->format('Y/m/d');
+                            echo $start_date->format('Y/m/d H:i');
                             if ($start_date->format('Y-m-d') !== $end_date->format('Y-m-d')) {
-                                echo ' ~ ' . $end_date->format('Y/m/d');
+                                echo ' ~ ' . $end_date->format('Y/m/d H:i');
+                            } else {
+                                echo ' ~ ' . $end_date->format('H:i');
                             }
-                            ?>
-                        </span>
-                        <span class="time">
-                            <i class="fas fa-clock"></i> 
-                            <?php 
-                            echo $start_date->format('H:i') . ' ~ ' . $end_date->format('H:i');
                             ?>
                         </span>
                         <span class="location">
@@ -228,7 +248,7 @@ try {
                         <?php if ($event['max_participants'] > 0): ?>
                             <span class="participants">
                                 <i class="fas fa-users"></i>
-                                報名人數：<?php echo $event['current_participants']; ?> / <?php echo $event['max_participants']; ?>
+                                報名人數：<?php echo $event['confirmed_count']; ?> / <?php echo $event['max_participants']; ?>
                             </span>
                         <?php endif; ?>
                     </div>
@@ -263,13 +283,16 @@ try {
                                     <?php
                                     $now = new DateTime();
                                     $start_date = new DateTime($event['start_date']);
+                                    $end_date = new DateTime($event['end_date']);
                                     
-                                    if ($now > $start_date) {
+                                    if ($now > $end_date) {
                                         echo '<span class="status-ended">活動已結束</span>';
                                     } elseif ($now > $deadline) {
                                         echo '<span class="status-closed">報名已截止</span>';
-                                    } elseif ($event['current_participants'] >= $event['max_participants']) {
+                                    } elseif ($event['confirmed_count'] >= $event['max_participants']) {
                                         echo '<span class="status-full">名額已滿</span>';
+                                    } elseif ($event['status'] !== 'published') {
+                                        echo '<span class="status-closed">報名未開放</span>';
                                     } else {
                                         echo '<span class="status-open">開放報名中</span>';
                                     }
@@ -277,11 +300,11 @@ try {
                                 </li>
                                 <li>
                                     <strong>剩餘名額：</strong>
-                                    <?php echo max(0, $event['max_participants'] - $event['current_participants']); ?> 個
+                                    <?php echo max(0, $event['max_participants'] - $event['confirmed_count']); ?> 個
                                 </li>
                             </ul>
 
-                            <?php if ($now <= $deadline && $now <= $start_date && $event['current_participants'] < $event['max_participants']): ?>
+                            <?php if ($event['status'] === 'published' && $now <= $deadline && $now <= $end_date && $event['confirmed_count'] < $event['max_participants']): ?>
                                 <div class="registration-actions">
                                     <a href="event_registration.php?id=<?php echo $event['id']; ?>" class="btn btn-primary">
                                         <i class="fas fa-sign-in-alt"></i> 立即報名
@@ -360,7 +383,16 @@ try {
                                     <div class="event-meta">
                                         <span>
                                             <i class="fas fa-calendar-alt"></i>
-                                            <?php echo date('Y/m/d H:i', strtotime($event['start_date'])); ?>
+                                            <?php 
+                                            $start_date = new DateTime($event['start_date']);
+                                            $end_date = new DateTime($event['end_date']);
+                                            echo $start_date->format('Y/m/d H:i');
+                                            if ($start_date->format('Y-m-d') !== $end_date->format('Y-m-d')) {
+                                                echo ' ~ ' . $end_date->format('Y/m/d H:i');
+                                            } else {
+                                                echo ' ~ ' . $end_date->format('H:i');
+                                            }
+                                            ?>
                                         </span>
                                         <span>
                                             <i class="fas fa-map-marker-alt"></i>
@@ -393,15 +425,29 @@ try {
                                         $can_register = true;
                                         $disabled_reason = '';
 
-                                        // 檢查是否已達人數上限
-                                        if ($event['max_participants'] && $event['confirmed_count'] >= $event['max_participants']) {
+                                        $now = new DateTime();
+                                        $end_date = new DateTime($event['end_date']);
+                                        $deadline = new DateTime($event['registration_deadline']);
+
+                                        // 檢查活動狀態
+                                        if ($event['status'] !== 'published') {
                                             $can_register = false;
-                                            $disabled_reason = '報名人數已滿';
+                                            $disabled_reason = '報名未開放';
+                                        }
+                                        // 檢查活動是否已結束
+                                        elseif ($now > $end_date) {
+                                            $can_register = false;
+                                            $disabled_reason = '活動已結束';
                                         }
                                         // 檢查報名截止時間
-                                        elseif ($event['registration_deadline'] && strtotime($event['registration_deadline']) < time()) {
+                                        elseif ($event['registration_deadline'] && $now > $deadline) {
                                             $can_register = false;
                                             $disabled_reason = '報名已截止';
+                                        }
+                                        // 檢查是否已達人數上限
+                                        elseif ($event['max_participants'] && $event['confirmed_count'] >= $event['max_participants']) {
+                                            $can_register = false;
+                                            $disabled_reason = '報名人數已滿';
                                         }
                                         ?>
 

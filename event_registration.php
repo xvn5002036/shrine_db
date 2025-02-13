@@ -31,7 +31,7 @@ try {
     $stmt = $db->prepare("
         SELECT * FROM events 
         WHERE id = ? 
-        AND status = 1 
+        AND status = 'published' 
         AND (registration_deadline IS NULL OR registration_deadline >= NOW())
         AND end_date >= NOW()
     ");

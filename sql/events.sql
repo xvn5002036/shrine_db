@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `events` (
     `registration_deadline` datetime DEFAULT NULL,
     `max_participants` int(11) DEFAULT NULL,
     `current_participants` int(11) DEFAULT 0,
-    `status` tinyint(1) NOT NULL DEFAULT 1,
+    `status` enum('draft', 'published') NOT NULL DEFAULT 'draft',
     `created_by` int(11) DEFAULT NULL,
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -77,7 +77,8 @@ INSERT INTO `events` (
     `start_date`, 
     `end_date`, 
     `registration_deadline`,
-    `max_participants`
+    `max_participants`,
+    `status`
 ) VALUES
 (1, '春季祈福大法會', 
    '一年一度春季祈福大法會，為信眾消災解厄，祈求平安。\n法會流程包括：\n1. 灑淨儀式\n2. 誦經祈福\n3. 消災祈安\n4. 圓滿功德', 
@@ -85,20 +86,23 @@ INSERT INTO `events` (
    '2024-03-15 09:00:00', 
    '2024-03-15 17:00:00',
    '2024-03-10 23:59:59',
-   200),
+   200,
+   'published'),
 (2, '元宵節燈會活動', 
    '歡慶元宵節，本宮舉辦大型燈會活動。\n活動內容：\n1. 花燈展示\n2. 猜燈謎\n3. 民俗表演\n4. 祈福點燈', 
    '宮廟廣場', 
    '2024-02-24 18:00:00', 
    '2024-02-24 22:00:00',
    '2024-02-20 23:59:59',
-   500),
+   500,
+   'published'),
 (3, '傳統文化講座', 
    '邀請知名講師分享傳統文化知識。\n講座主題：\n1. 傳統節慶的意義\n2. 民間信仰與生活\n3. 宮廟文化的傳承', 
    '文化教室', 
    '2024-04-01 14:00:00', 
    '2024-04-01 16:00:00',
    '2024-03-28 23:59:59',
-   50);
+   50,
+   'published');
 
 SET FOREIGN_KEY_CHECKS = 1; 
