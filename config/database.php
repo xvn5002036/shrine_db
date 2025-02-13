@@ -1,8 +1,8 @@
 <?php
 return [
     'host' => 'localhost',
+    'dbname' => 'shrine_db',
     'username' => 'root',
     'password' => '',
-    'dbname' => 'shrine_db',
     'charset' => 'utf8mb4'
 ];

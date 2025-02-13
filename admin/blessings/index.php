@@ -4,6 +4,101 @@ require_once '../../config/config.php';
 require_once '../includes/auth_check.php';
 require_once '../../includes/db_connect.php';
 
+// 處理CSV下載
+if (isset($_GET['download_csv'])) {
+    // 設置header
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=blessings_' . date('Y-m-d') . '.csv');
+    
+    // 創建輸出流
+    $output = fopen('php://output', 'w');
+    
+    // 寫入BOM，解決中文亂碼
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // 寫入CSV標題
+    fputcsv($output, array(
+        'ID',
+        '申請人',
+        '祈福項目',
+        '類型',
+        '電話',
+        '信箱',
+        '金額',
+        '申請日期',
+        '狀態'
+    ));
+    
+    // 構建查詢條件
+    $where_clause = "WHERE 1=1";
+    $params = [];
+    
+    if (!empty($search)) {
+        $where_clause .= " AND (br.name LIKE :search OR br.email LIKE :search OR br.phone LIKE :search)";
+        $params[':search'] = "%$search%";
+    }
+    
+    if (!empty($status_filter)) {
+        $where_clause .= " AND br.status = :status";
+        $params[':status'] = $status_filter;
+    }
+    
+    if (!empty($date_from)) {
+        $where_clause .= " AND DATE(br.created_at) >= :date_from";
+        $params[':date_from'] = $date_from;
+    }
+    
+    if (!empty($date_to)) {
+        $where_clause .= " AND DATE(br.created_at) <= :date_to";
+        $params[':date_to'] = $date_to;
+    }
+    
+    // 獲取所有資料
+    $sql = "
+        SELECT br.*, 
+               b.name as blessing_name, 
+               b.price as price,
+               bt.name as type_name
+        FROM blessing_registrations br
+        LEFT JOIN blessings b ON br.blessing_id = b.id
+        LEFT JOIN blessing_types bt ON b.type_id = bt.id
+        $where_clause
+        ORDER BY br.created_at DESC
+    ";
+    
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    
+    // 寫入數據
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $status_text = match($row['status']) {
+            'pending' => '待處理',
+            'confirmed' => '已確認',
+            'completed' => '已完成',
+            'cancelled' => '已取消',
+            default => '未知'
+        };
+        
+        fputcsv($output, array(
+            $row['id'],
+            $row['name'],
+            $row['blessing_name'],
+            $row['type_name'],
+            $row['phone'],
+            $row['email'],
+            $row['price'],
+            $row['created_at'],
+            $status_text
+        ));
+    }
+    
+    fclose($output);
+    exit();
+}
+
 // 處理狀態更新
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
@@ -181,6 +276,11 @@ require_once '../includes/header.php';
                     </div>
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary w-100">搜尋</button>
+                    </div>
+                    <div class="col-md-1">
+                        <a href="?<?php echo http_build_query(array_merge($_GET, ['download_csv' => 1])); ?>" class="btn btn-success w-100">
+                            <i class="fas fa-download"></i> CSV
+                        </a>
                     </div>
                 </form>
             </div>

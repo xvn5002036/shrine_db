@@ -365,4 +365,4 @@ require_once '../includes/header.php';
 }
 </style>
 
-<?php require_once '../templates/footer.php'; ?> 
+<?php require_once '../includes/footer.php'; ?> 

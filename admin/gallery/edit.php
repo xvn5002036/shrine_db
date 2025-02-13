@@ -322,31 +322,32 @@ require_once '../includes/header.php';
                         </div>
 
                         <!-- 現有照片列表 -->
-                        <div class="existing-photos mt-4">
-                            <h5>現有照片</h5>
-                            <div class="row g-3">
-                                <?php if (empty($photos)): ?>
-                                    <div class="col-12">
-                                        <p class="text-center text-muted">尚無照片</p>
-                                    </div>
-                                <?php else: ?>
-                                    <?php foreach ($photos as $photo): ?>
-                                        <div class="col-md-6 col-lg-4">
-                                            <div class="photo-card">
-                                                <img src="/uploads/gallery/<?php echo $album['id']; ?>/<?php echo $photo['filename']; ?>" 
-                                                     class="img-fluid" alt="<?php echo htmlspecialchars($photo['original_name']); ?>">
-                                                <div class="photo-card-overlay">
-                                                    <button type="button" class="btn btn-sm btn-danger delete-photo" 
-                                                            data-photo-id="<?php echo $photo['id']; ?>"
-                                                            onclick="return confirm('確定要刪除此照片嗎？')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
+                        <div class="photo-list mt-4">
+                            <?php foreach ($photos as $photo): ?>
+                                <div class="photo-item" data-id="<?php echo $photo['id']; ?>">
+                                    <div class="photo-preview">
+                                        <img src="/uploads/gallery/<?php echo $id; ?>/<?php echo $photo['filename']; ?>" 
+                                             alt="<?php echo htmlspecialchars($photo['original_name']); ?>">
+                                        <div class="photo-actions">
+                                            <button type="button" class="btn btn-sm btn-success set-cover" 
+                                                    data-photo-id="<?php echo $photo['id']; ?>"
+                                                    data-filename="<?php echo $photo['filename']; ?>"
+                                                    <?php echo ($album['cover_photo'] === $photo['filename']) ? 'disabled' : ''; ?>>
+                                                <i class="fas fa-image"></i> 設為封面
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger delete-photo" 
+                                                    data-photo-id="<?php echo $photo['id']; ?>">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </div>
+                                        <?php if ($album['cover_photo'] === $photo['filename']): ?>
+                                            <div class="cover-badge">
+                                                <i class="fas fa-star"></i> 封面照片
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
                 </div>
@@ -563,6 +564,67 @@ require_once '../includes/header.php';
     align-items: center;
     justify-content: center;
 }
+
+.photo-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.photo-item {
+    position: relative;
+}
+
+.photo-preview {
+    position: relative;
+    padding-top: 75%;
+    background: #f8f9fa;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.photo-preview img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.5rem;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.photo-item:hover .photo-actions {
+    opacity: 1;
+}
+
+.cover-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.cover-badge i {
+    color: #ffd700;
+    margin-right: 0.25rem;
+}
 </style>
 
 <script>
@@ -744,7 +806,58 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // 設為封面的處理
+    document.querySelectorAll('.set-cover').forEach(button => {
+        button.addEventListener('click', function() {
+            const photoId = this.dataset.photoId;
+            const filename = this.dataset.filename;
+            const albumId = <?php echo json_encode($id); ?>;
+
+            fetch('set_cover.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    photo_id: photoId,
+                    album_id: albumId,
+                    filename: filename
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新UI
+                    document.querySelectorAll('.set-cover').forEach(btn => {
+                        btn.disabled = false;
+                    });
+                    this.disabled = true;
+                    
+                    // 移除所有現有的封面標記
+                    document.querySelectorAll('.cover-badge').forEach(badge => {
+                        badge.remove();
+                    });
+                    
+                    // 添加新的封面標記
+                    const photoItem = this.closest('.photo-item');
+                    const badge = document.createElement('div');
+                    badge.className = 'cover-badge';
+                    badge.innerHTML = '<i class="fas fa-star"></i> 封面照片';
+                    photoItem.querySelector('.photo-preview').appendChild(badge);
+                    
+                    showNotification('封面照片已更新', 'success');
+                } else {
+                    showNotification('設定封面失敗：' + data.message);
+                }
+            })
+            .catch(error => {
+                showNotification('設定封面時發生錯誤');
+                console.error('Error:', error);
+            });
+        });
+    });
 });
 </script>
 
-<?php require_once '../templates/footer.php'; ?> 
+<?php require_once '../includes/footer.php'; ?> 

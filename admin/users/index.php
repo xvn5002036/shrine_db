@@ -4,6 +4,87 @@ require_once '../../config/config.php';
 require_once '../includes/auth_check.php';
 require_once '../../includes/db_connect.php';
 
+// 處理CSV下載
+if (isset($_GET['download_csv'])) {
+    // 設置header
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=users_' . date('Y-m-d') . '.csv');
+    
+    // 創建輸出流
+    $output = fopen('php://output', 'w');
+    
+    // 寫入BOM，解決中文亂碼
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // 寫入CSV標題
+    fputcsv($output, array(
+        'ID',
+        '用戶名',
+        '姓名',
+        '信箱',
+        '角色',
+        '狀態',
+        '註冊時間',
+        '最後登入'
+    ));
+    
+    // 構建查詢條件
+    $where_clause = "WHERE 1=1";
+    $params = [];
+    
+    if (!empty($search)) {
+        $where_clause .= " AND (username LIKE :search OR email LIKE :search OR first_name LIKE :search OR last_name LIKE :search)";
+        $params[':search'] = "%$search%";
+    }
+    
+    if (!empty($role_filter)) {
+        $where_clause .= " AND role = :role";
+        $params[':role'] = $role_filter;
+    }
+    
+    if ($status_filter !== '') {
+        $where_clause .= " AND status = :status";
+        $params[':status'] = $status_filter;
+    }
+    
+    // 獲取所有用戶資料
+    $sql = "
+        SELECT id, username, email, 
+               CONCAT(first_name, ' ', last_name) as full_name,
+               role, status, created_at, last_login 
+        FROM addusers 
+        $where_clause 
+        ORDER BY created_at DESC
+    ";
+    
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    
+    // 寫入數據
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $role_text = $row['role'] === 'admin' ? '管理員' : '一般用戶';
+        $status_text = $row['status'] ? '啟用' : '停用';
+        $last_login = $row['last_login'] ? date('Y-m-d H:i', strtotime($row['last_login'])) : '從未登入';
+        
+        fputcsv($output, array(
+            $row['id'],
+            $row['username'],
+            $row['full_name'],
+            $row['email'],
+            $role_text,
+            $status_text,
+            date('Y-m-d H:i', strtotime($row['created_at'])),
+            $last_login
+        ));
+    }
+    
+    fclose($output);
+    exit();
+}
+
 // 處理分頁
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 10;
@@ -132,6 +213,11 @@ require_once '../includes/header.php';
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary w-100">搜尋</button>
                     </div>
+                    <div class="col-md-1">
+                        <a href="?<?php echo http_build_query(array_merge($_GET, ['download_csv' => 1])); ?>" class="btn btn-success w-100">
+                            <i class="fas fa-download"></i> CSV
+                        </a>
+                    </div>
                 </form>
             </div>
         </div>
@@ -237,4 +323,4 @@ require_once '../includes/header.php';
     </div>
 </div>
 
-<?php require_once '../templates/footer.php'; ?> 
+<?php require_once '../includes/footer.php'; ?> 

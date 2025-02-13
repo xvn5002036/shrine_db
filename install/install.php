@@ -137,7 +137,7 @@ if ($_POST['step'] == '3') {
 
         try {
             // 更新網站設定
-            $stmt = $db->prepare("UPDATE settings SET value = ? WHERE `key` = 'site_name'");
+            $stmt = $db->prepare("UPDATE settings SET setting_value = ? WHERE setting_key = 'site_name'");
             $stmt->execute([$site_name]);
 
             // 檢查users表格是否存在

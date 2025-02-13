@@ -6,6 +6,67 @@ require_once '../../includes/functions.php';
 // 檢查管理員是否已登入
 checkAdminLogin();
 
+// 處理CSV下載
+if (isset($_GET['download_csv'])) {
+    // 設置header
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=event_participants_' . date('Y-m-d') . '.csv');
+    
+    // 創建輸出流
+    $output = fopen('php://output', 'w');
+    
+    // 寫入BOM，解決中文亂碼
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // 寫入CSV標題
+    fputcsv($output, array(
+        'ID',
+        '參與者姓名',
+        '使用者帳號',
+        '參與人數',
+        '聯絡電話',
+        '電子郵件',
+        '報名時間',
+        '狀態',
+        '備註'
+    ));
+    
+    // 獲取活動參與者資料
+    $stmt = $pdo->prepare("
+        SELECT r.*, u.username as user_name
+        FROM event_registrations r 
+        LEFT JOIN users u ON r.user_id = u.id 
+        WHERE r.event_id = ?
+        ORDER BY r.created_at DESC
+    ");
+    $stmt->execute([$id]);
+    
+    // 寫入數據
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $status_text = match($row['status']) {
+            'pending' => '待確認',
+            'confirmed' => '已確認',
+            'cancelled' => '已取消',
+            default => '未知'
+        };
+        
+        fputcsv($output, array(
+            $row['id'],
+            $row['name'],
+            $row['user_name'],
+            $row['participants'],
+            $row['phone'],
+            $row['email'],
+            $row['created_at'],
+            $status_text,
+            $row['notes']
+        ));
+    }
+    
+    fclose($output);
+    exit();
+}
+
 // 獲取活動 ID
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -75,15 +136,13 @@ try {
         .admin-main {
             flex: 1;
             padding: 20px;
-            margin-left: 250px;
-            width: calc(100% - 250px);
+            width: 100%;
             min-height: 100vh;
             background-color: #f4f6f9;
         }
 
         @media (max-width: 768px) {
             .admin-main {
-                margin-left: 0;
                 width: 100%;
             }
         }
@@ -237,13 +296,18 @@ try {
                 <div class="page-header">
                     <div class="toolbar">
                         <h1><i class="fas fa-users"></i> <?php echo htmlspecialchars($event['title']); ?> - 參與者管理</h1>
-                        <nav aria-label="breadcrumb">
-                            <ol class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="../index.php">首頁</a></li>
-                                <li class="breadcrumb-item"><a href="index.php">活動管理</a></li>
-                                <li class="breadcrumb-item active">參與者管理</li>
-                            </ol>
-                        </nav>
+                        <div class="d-flex align-items-center">
+                            <a href="?id=<?php echo $id; ?>&download_csv=1" class="btn btn-success me-2">
+                                <i class="fas fa-download"></i> 下載CSV
+                            </a>
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb mb-0">
+                                    <li class="breadcrumb-item"><a href="../index.php">首頁</a></li>
+                                    <li class="breadcrumb-item"><a href="index.php">活動管理</a></li>
+                                    <li class="breadcrumb-item active">參與者管理</li>
+                                </ol>
+                            </nav>
+                        </div>
                     </div>
                 </div>
 
