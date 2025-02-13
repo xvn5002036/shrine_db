@@ -99,23 +99,28 @@ require_once 'templates/header.php';
 
         <!-- 照片展示 -->
         <div class="photo-gallery">
-            <div class="row g-4">
+            <div class="masonry-grid">
                 <?php foreach ($photos as $photo): ?>
-                    <div class="col-md-4 col-lg-3">
+                    <div class="masonry-item">
                         <div class="photo-card">
-                            <a href="/uploads/gallery/<?php echo $id; ?>/<?php echo $photo['file_name']; ?>" 
-                               class="gallery-item" 
-                               data-fancybox="gallery" 
-                               data-caption="<?php echo htmlspecialchars($photo['description'] ?: $album['title']); ?>">
-                                <img src="/uploads/gallery/<?php echo $id; ?>/<?php echo $photo['file_name']; ?>" 
-                                     class="img-fluid" 
-                                     alt="<?php echo htmlspecialchars($photo['description'] ?: $album['title']); ?>">
-                            </a>
-                            <?php if (!empty($photo['description'])): ?>
-                                <div class="photo-caption">
-                                    <?php echo htmlspecialchars($photo['description']); ?>
-                                </div>
-                            <?php endif; ?>
+                            <div class="photo-card-inner">
+                                <a href="/uploads/gallery/<?php echo $id; ?>/<?php echo $photo['filename']; ?>" 
+                                   class="gallery-item" 
+                                   data-fancybox="gallery" 
+                                   data-caption="<?php echo htmlspecialchars($photo['description'] ?: $album['title']); ?>">
+                                    <img src="/uploads/gallery/<?php echo $id; ?>/<?php echo $photo['filename']; ?>" 
+                                         class="img-fluid" 
+                                         alt="<?php echo htmlspecialchars($photo['description'] ?: $album['title']); ?>"
+                                         loading="lazy">
+                                    <?php if (!empty($photo['description'])): ?>
+                                        <div class="photo-overlay">
+                                            <div class="photo-description">
+                                                <?php echo htmlspecialchars($photo['description']); ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -124,41 +129,78 @@ require_once 'templates/header.php';
     </div>
 </div>
 
+<!-- Masonry JS -->
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+<script src="https://unpkg.com/imagesloaded@5/imagesloaded.pkgd.min.js"></script>
+
 <!-- Fancybox CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css">
 <!-- Fancybox JS -->
 <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
+
 <script>
-    // 初始化 Fancybox
-    Fancybox.bind("[data-fancybox]", {
-        // 自定義選項
-        loop: true,
-        buttons: [
-            "zoom",
-            "slideShow",
-            "fullScreen",
-            "close"
-        ],
-        animationEffect: "fade",
-        transitionEffect: "fade",
-        // 顯示縮圖導航
-        Thumbs: {
-            autoStart: true,
-            type: "classic"
-        },
-        // 調整圖片大小
-        Image: {
-            fit: "contain",
-            ratio: 16/9,
-            maxWidth: "80%",
-            maxHeight: "80%"
-        },
-        // 調整燈箱效果
-        Carousel: {
-            transition: "slide",
-            friction: 0.8
-        }
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化 Masonry
+        var grid = document.querySelector('.masonry-grid');
+        var masonry = new Masonry(grid, {
+            itemSelector: '.masonry-item',
+            columnWidth: '.masonry-item',
+            percentPosition: true,
+            gutter: 20
+        });
+
+        // 處理圖片載入
+        var images = document.querySelectorAll('.photo-card img');
+        images.forEach(function(img) {
+            // 設置初始透明度為 1
+            img.style.opacity = '1';
+            
+            img.addEventListener('load', function() {
+                this.classList.add('loaded');
+                masonry.layout();
+            });
+        });
+
+        // 當所有圖片載入完成後重新排列
+        imagesLoaded(grid).on('progress', function() {
+            masonry.layout();
+        });
+
+        // 初始化 Fancybox
+        Fancybox.bind("[data-fancybox]", {
+            loop: true,
+            buttons: [
+                "zoom",
+                "slideShow",
+                "fullScreen",
+                "thumbs",
+                "close"
+            ],
+            animationEffect: "fade",
+            transitionEffect: "fade",
+            Thumbs: {
+                autoStart: true,
+                type: "modern"
+            },
+            Image: {
+                fit: "contain",
+                ratio: 16/9,
+                maxWidth: "90%",
+                maxHeight: "90%"
+            },
+            Carousel: {
+                transition: "slide",
+                friction: 0.8
+            }
+        });
     });
+</script>
+
+<script>
+// 當頁面載入完成後顯示網格
+window.addEventListener('load', function() {
+    document.querySelector('.masonry-grid').classList.add('loaded');
+});
 </script>
 
 <style>
@@ -244,56 +286,113 @@ require_once 'templates/header.php';
     margin-right: 8px;
 }
 
-/* 照片卡片樣式 */
+/* 照片展示區域樣式 */
 .photo-gallery {
-    padding: 1rem 0;
+    padding: 2rem 0;
+}
+
+.masonry-grid {
+    width: 100%;
+    margin: 0 auto;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.masonry-grid.loaded {
+    opacity: 1;
+}
+
+.masonry-item {
+    width: calc(33.333% - 20px);
+    margin-bottom: 20px;
+    break-inside: avoid;
+    opacity: 1;
+    animation: none;
+}
+
+@media (max-width: 992px) {
+    .masonry-item {
+        width: calc(50% - 20px);
+    }
+}
+
+@media (max-width: 576px) {
+    .masonry-item {
+        width: 100%;
+    }
 }
 
 .photo-card {
     position: relative;
-    margin-bottom: 2rem;
-    border-radius: 15px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 15px 25px rgba(0, 0, 0, 0.1);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    aspect-ratio: 3/4;
-    background: #fff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .photo-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 20px 30px rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.photo-card-inner {
+    position: relative;
+    width: 100%;
+    min-height: 100px;
+    background: #f8f9fa;
 }
 
 .photo-card img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    height: auto;
+    display: block;
+    border-radius: 12px;
+    opacity: 1;
+    transition: transform 0.3s ease;
 }
 
 .photo-card:hover img {
-    transform: scale(1.1);
+    transform: scale(1.05);
 }
 
-.photo-caption {
+.photo-overlay {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 1rem;
-    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-    color: white;
-    font-size: 0.95rem;
-    text-align: center;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    padding: 20px;
     opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.3s ease;
 }
 
-.photo-card:hover .photo-caption {
+.photo-card:hover .photo-overlay {
     opacity: 1;
-    transform: translateY(0);
+}
+
+.photo-description {
+    color: #fff;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Fancybox 客製化樣式 */
+.fancybox__container {
+    --fancybox-bg: rgba(0, 0, 0, 0.95);
+}
+
+.fancybox__toolbar {
+    --fancybox-color: #fff;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.fancybox__nav {
+    --fancybox-color: #fff;
+}
+
+.fancybox__thumbs {
+    background: rgba(0, 0, 0, 0.3);
 }
 
 /* 按鈕樣式 */
@@ -313,75 +412,6 @@ require_once 'templates/header.php';
     box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
     background: linear-gradient(135deg, #5d4adb 0%, #9349d3 100%);
 }
-
-/* Fancybox 自定義樣式 */
-.fancybox__container {
-    --fancybox-bg: rgba(0, 0, 0, 0.95);
-}
-
-.fancybox__toolbar {
-    --fancybox-color: #fff;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(10px);
-}
-
-.fancybox__nav {
-    --fancybox-color: #fff;
-}
-
-.fancybox__nav button {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(5px);
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-}
-
-.fancybox__thumbs {
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    padding: 10px 0;
-}
-
-.fancybox__content {
-    padding: 0;
-    background: transparent;
-    max-width: 85vw;
-    max-height: 85vh;
-    border-radius: 15px;
-    overflow: hidden;
-}
-
-.fancybox__caption {
-    background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5));
-    padding: 1.5rem;
-    font-size: 1.1rem;
-    text-align: center;
-    backdrop-filter: blur(10px);
-}
-
-/* 響應式調整 */
-@media (max-width: 768px) {
-    .page-banner {
-        padding: 2rem 0;
-    }
-    
-    .page-banner h1 {
-        font-size: 2rem;
-    }
-    
-    .album-info .card-body {
-        padding: 1.5rem;
-    }
-    
-    .album-info .card-title {
-        font-size: 1.5rem;
-    }
-    
-    .photo-card {
-        aspect-ratio: 1;
-    }
-}
 </style>
 
-<?php require_once 'templates/footer.php'; ?> 
+<?php include 'includes/footer.php'; ?> 

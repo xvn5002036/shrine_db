@@ -29,7 +29,7 @@ DROP TABLE IF EXISTS `gallery_photos`;
 CREATE TABLE `gallery_photos` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `album_id` int(11) NOT NULL COMMENT '所屬相簿ID',
-    `file_name` varchar(255) NOT NULL COMMENT '檔案名稱',
+    `filename` varchar(255) NOT NULL COMMENT '檔案名稱',
     `original_name` varchar(255) NOT NULL COMMENT '原始檔案名稱',
     `file_type` varchar(50) NOT NULL COMMENT '檔案類型',
     `file_size` int(11) NOT NULL COMMENT '檔案大小',

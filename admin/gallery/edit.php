@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // 插入圖片資訊到資料庫
                         $stmt = $pdo->prepare("
                             INSERT INTO gallery_photos (
-                                album_id, file_name, original_name, 
+                                album_id, filename, original_name, 
                                 file_type, file_size, created_at
                             ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                         ");
@@ -120,13 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($_POST['delete_photos'])) {
             foreach ($_POST['delete_photos'] as $photo_id) {
                 // 獲取圖片資訊
-                $stmt = $pdo->prepare("SELECT file_name FROM gallery_photos WHERE id = ? AND album_id = ?");
+                $stmt = $pdo->prepare("SELECT filename FROM gallery_photos WHERE id = ? AND album_id = ?");
                 $stmt->execute([$photo_id, $id]);
                 $photo = $stmt->fetch();
 
                 if ($photo) {
                     // 刪除實體檔案
-                    $file_path = $root_path . '/uploads/gallery/' . $id . '/' . $photo['file_name'];
+                    $file_path = $root_path . '/uploads/gallery/' . $id . '/' . $photo['filename'];
                     if (file_exists($file_path)) {
                         unlink($file_path);
                     }
@@ -333,7 +333,7 @@ require_once '../includes/header.php';
                                     <?php foreach ($photos as $photo): ?>
                                         <div class="col-md-6 col-lg-4">
                                             <div class="photo-card">
-                                                <img src="/uploads/gallery/<?php echo $album['id']; ?>/<?php echo $photo['file_name']; ?>" 
+                                                <img src="/uploads/gallery/<?php echo $album['id']; ?>/<?php echo $photo['filename']; ?>" 
                                                      class="img-fluid" alt="<?php echo htmlspecialchars($photo['original_name']); ?>">
                                                 <div class="photo-card-overlay">
                                                     <button type="button" class="btn btn-sm btn-danger delete-photo" 

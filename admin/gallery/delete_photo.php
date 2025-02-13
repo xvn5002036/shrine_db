@@ -50,11 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['photo_id'])) {
         }
     } catch (Exception $e) {
         // 回滾事務
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 } else {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => '無效的請求']);
-} 
+}

@@ -9,7 +9,7 @@ $current_year = date('Y');
                 <div class="footer-section">
                     <h3>關於本宮</h3>
                     <div class="footer-logo">
-                        <img src="assets/images/logo.png" alt="<?php echo SITE_NAME; ?>">
+                        <img src="image/logo.png" alt="<?php echo SITE_NAME; ?>">
                     </div>
                     <p class="temple-description">
                         <?php echo SITE_NAME; ?> 致力於弘揚傳統文化，提供信眾優質的宗教服務，

@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // 插入圖片資訊到資料庫
                         $stmt = $pdo->prepare("
                             INSERT INTO gallery_photos (
-                                album_id, file_name, original_name, 
+                                album_id, filename, original_name, 
                                 file_type, file_size, created_at
                             ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                         ");
@@ -164,7 +164,7 @@ try {
     // 獲取相簿列表
     $sql = "
         SELECT a.*, u.username as created_by_name,
-               (SELECT COUNT(*) FROM gallery_photos WHERE album_id = a.id) as photo_count
+               (SELECT COUNT(*) FROM gallery_photos p WHERE p.album_id = a.id) as photo_count
         FROM gallery_albums a
         LEFT JOIN users u ON a.created_by = u.id
         $where_clause
@@ -341,78 +341,84 @@ require_once '../includes/header.php';
                     <div class="col-md-6">
                         <div class="upload-container">
                             <div class="upload-area" id="uploadArea">
-                                <div class="upload-content">
-                                    <div class="upload-icon">
+                                <div class="upload-hint">
                                         <i class="fas fa-cloud-upload-alt"></i>
-                                    </div>
-                                    <h3>拖放照片至此處上傳</h3>
-                                    <p>或</p>
-                                    <label for="fileInput" class="upload-btn">選擇檔案</label>
-                                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
-                                    <p class="upload-hint">支援 JPG、PNG 格式，單檔最大 5MB</p>
+                                    <p>拖放照片到此處或點擊選擇照片</p>
+                                    <small>支援 JPG、PNG、GIF 格式，單檔最大 5MB</small>
                                 </div>
+                                <input type="file" id="photoInput" multiple accept="image/*" style="display: none;">
                             </div>
                             
-                            <!-- 上傳預覽和進度 -->
-                            <div class="upload-preview" id="uploadPreview">
+                            <!-- 預覽區域 -->
+                            <div id="previewArea" class="preview-area" style="display: none;">
                                 <div class="preview-header">
-                                    <h4>上傳項目</h4>
-                                    <button type="button" class="btn btn-primary btn-sm start-upload" id="startUpload" style="display: none;">
-                                        開始上傳
+                                    <h3>已選擇的照片</h3>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="addMorePhotos">
+                                        <i class="fas fa-plus"></i> 新增更多照片
                                     </button>
                                 </div>
-                                <div class="preview-list" id="previewList"></div>
+                                <div id="photoPreview" class="row g-3"></div>
                             </div>
                         </div>
                     </div>
 
                     <!-- 相簿資訊表單 -->
                     <div class="col-md-6">
-                        <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <div id="albumForm" class="album-form mt-4" style="display: none;">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h3 class="card-title mb-4">相簿資訊</h3>
                             <div class="mb-3">
-                                <label for="title" class="form-label">相簿標題 <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="title" name="title" required>
-                                <div class="invalid-feedback">請輸入相簿標題</div>
+                                        <label for="albumTitle" class="form-label">相簿標題 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="albumTitle" required>
                             </div>
-
                             <div class="mb-3">
-                                <label for="category" class="form-label">相簿分類 <span class="text-danger">*</span></label>
-                                <select class="form-select" id="category" name="category" required>
-                                    <option value="">請選擇分類</option>
-                                    <?php foreach ($categories as $key => $name): ?>
-                                        <?php if ($key !== ''): ?>
-                                            <option value="<?php echo $key; ?>"><?php echo $name; ?></option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                                <div class="invalid-feedback">請選擇相簿分類</div>
+                                        <label for="albumDescription" class="form-label">相簿描述</label>
+                                        <textarea class="form-control" id="albumDescription" rows="3"></textarea>
                             </div>
-
+                                    <div class="row">
+                                        <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="description" class="form-label">相簿描述</label>
-                                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                                                <label for="eventDate" class="form-label">活動日期 <span class="text-danger">*</span></label>
+                                                <input type="date" class="form-control" id="eventDate" required>
                             </div>
-
-                            <div class="mb-3">
-                                <label for="event_date" class="form-label">活動日期 <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="event_date" name="event_date" required>
-                                <div class="invalid-feedback">請選擇活動日期</div>
                             </div>
-
+                                        <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="status" class="form-label">發布狀態</label>
-                                <select class="form-select" id="status" name="status">
-                                    <option value="draft">草稿</option>
-                                    <option value="published">發布</option>
+                                                <label for="category" class="form-label">分類 <span class="text-danger">*</span></label>
+                                                <select class="form-select" id="category" name="category" required>
+                                                    <option value="">請選擇分類</option>
+                                                    <option value="temple">宮廟建築</option>
+                                                    <option value="ceremony">祭典活動</option>
+                                                    <option value="collection">文物典藏</option>
+                                                    <option value="festival">節慶活動</option>
                                 </select>
                             </div>
-
+                                        </div>
+                                    </div>
                             <div class="mb-3">
-                                <button type="submit" class="btn btn-primary">
+                                        <label class="form-label">發布狀態</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="status" id="statusDraft" value="draft" checked>
+                                            <label class="form-check-label" for="statusDraft">
+                                                儲存為草稿
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="status" id="statusPublished" value="published">
+                                            <label class="form-check-label" for="statusPublished">
+                                                立即發布
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-primary" id="submitAlbum">
                                     <i class="fas fa-save"></i> 建立相簿
                                 </button>
+                                    </div>
+                                </div>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -433,7 +439,6 @@ require_once '../includes/header.php';
     display: none;
     justify-content: center;
     align-items: center;
-    pointer-events: none;
 }
 
 .drag-overlay.active {
@@ -463,317 +468,347 @@ require_once '../includes/header.php';
 
 /* 修改上傳區域樣式 */
 .upload-area {
-    border: 2px dashed #cbd5e0;
-    border-radius: 1rem;
-    padding: 2rem;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 40px;
     text-align: center;
-    background: #f8fafc;
+    cursor: pointer;
     transition: all 0.3s ease;
-    margin-bottom: 2rem;
 }
 
 .upload-area.dragover {
-    border-color: #6366f1;
-    background: rgba(99, 102, 241, 0.05);
-    transform: scale(1.02);
-}
-
-/* 預覽區域優化 */
-.preview-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-top: 2rem;
-}
-
-.preview-card {
-    position: relative;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    background: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: transform 0.3s ease;
-}
-
-.preview-card:hover {
-    transform: translateY(-2px);
-}
-
-/* 上傳區域樣式 */
-.upload-container {
-    margin-bottom: 2rem;
-}
-
-.upload-area {
-    border: 2px dashed #cbd5e0;
-    border-radius: 1rem;
-    padding: 3rem;
-    text-align: center;
-    background: #f8fafc;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.upload-area.dragover {
-    border-color: #6366f1;
-    background: rgba(99, 102, 241, 0.05);
-}
-
-.upload-icon {
-    font-size: 4rem;
-    color: #6366f1;
-    margin-bottom: 1.5rem;
-}
-
-.upload-content h3 {
-    font-size: 1.5rem;
-    color: #1a202c;
-    margin-bottom: 1rem;
-}
-
-.upload-btn {
-    display: inline-block;
-    padding: 0.8rem 2rem;
-    background: #6366f1;
-    color: #fff;
-    border-radius: 50px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin: 1rem 0;
-}
-
-.upload-btn:hover {
-    background: #4f46e5;
-    transform: translateY(-2px);
+    border-color: #4a90e2;
+    background-color: #f8f9fa;
 }
 
 .upload-hint {
-    color: #64748b;
-    font-size: 0.9rem;
-    margin-top: 1rem;
+    color: #666;
 }
 
-/* 預覽區域樣式 */
-.upload-preview {
-    margin-top: 2rem;
-    display: none;
+.upload-hint i {
+    font-size: 48px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.preview-area {
+    margin-top: 20px;
 }
 
 .preview-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
-}
-
-.preview-header h4 {
-    margin: 0;
-    color: #1a202c;
-}
-
-.preview-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
+    margin-bottom: 15px;
 }
 
 .preview-item {
     position: relative;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    background: #fff;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 15px;
 }
 
-.preview-image {
+.preview-item img {
     width: 100%;
-    aspect-ratio: 1;
+    height: 200px;
     object-fit: cover;
+    border-radius: 4px;
 }
 
-.preview-info {
-    padding: 0.75rem;
-}
-
-.preview-name {
-    font-size: 0.9rem;
-    color: #1a202c;
-    margin-bottom: 0.5rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.preview-size {
-    font-size: 0.8rem;
-    color: #64748b;
-}
-
-.preview-progress {
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    margin-top: 0.5rem;
-}
-
-.progress-bar {
-    height: 100%;
-    background: #6366f1;
-    border-radius: 2px;
-    width: 0;
-    transition: width 0.3s ease;
-}
-
-.preview-remove {
+.btn-remove {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: 5px;
+    right: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
     width: 24px;
     height: 24px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.5);
-    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+}
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 4px;
+    color: white;
+    z-index: 1000;
+}
+
+.notification.error {
+    background-color: #dc3545;
+}
+
+.notification.success {
+    background-color: #28a745;
+}
+
+.progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0%;
+    background-color: #4a90e2;
+    z-index: 1000;
+    animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+}
+
+.drag-zone {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    background-color: #f8f9fa;
     transition: all 0.3s ease;
+    margin-bottom: 20px;
 }
 
-.preview-remove:hover {
-    background: rgba(0, 0, 0, 0.7);
+.drag-zone.dragover {
+    background-color: #e9ecef;
+    border-color: #0d6efd;
 }
 
-.upload-error {
-    color: #dc2626;
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
+.drag-zone i {
+    font-size: 48px;
+    color: #6c757d;
+    margin-bottom: 10px;
+}
+
+#preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.preview-item {
+    position: relative;
+    width: 100px;
+    height: 100px;
+}
+
+.preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.preview-item .remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const photoInput = document.getElementById('photoInput');
+    const previewArea = document.getElementById('previewArea');
+    const photoPreview = document.getElementById('photoPreview');
+    const albumForm = document.getElementById('albumForm');
+    const addMorePhotos = document.getElementById('addMorePhotos');
     const dragOverlay = document.getElementById('dragOverlay');
-    const mainContent = document.querySelector('.main-content');
-    let dragCounter = 0;
+    let uploadedFiles = [];
 
-    // 全域拖放事件處理
-    document.addEventListener('dragenter', function(e) {
+    // 為整個文件添加拖放事件
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        document.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
         e.preventDefault();
-        dragCounter++;
-        if (dragCounter === 1) {
+        e.stopPropagation();
+    }
+
+    // 顯示拖放覆蓋層
+    ['dragenter', 'dragover'].forEach(eventName => {
+        document.addEventListener(eventName, function() {
             dragOverlay.classList.add('active');
-        }
+        }, false);
     });
 
-    document.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        dragCounter--;
-        if (dragCounter === 0) {
+    // 隱藏拖放覆蓋層
+    ['dragleave', 'drop'].forEach(eventName => {
+        document.addEventListener(eventName, function(e) {
+            // 只有當滑鼠離開視窗或完成拖放時才隱藏覆蓋層
+            if (eventName === 'dragleave' && e.clientY > 0) {
+                return;
+            }
             dragOverlay.classList.remove('active');
-        }
+        }, false);
     });
 
-    document.addEventListener('dragover', function(e) {
-        e.preventDefault();
+    // 處理整個文件的拖放
+    document.addEventListener('drop', (e) => {
+        handleFiles(e.dataTransfer.files);
     });
 
-    document.addEventListener('drop', function(e) {
-        e.preventDefault();
-        dragCounter = 0;
-        dragOverlay.classList.remove('active');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFiles(files);
-        }
+    // 點擊上傳區域
+    uploadArea.addEventListener('click', () => {
+        photoInput.click();
     });
 
-    // 檔案處理函數
+    photoInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    // 新增更多照片
+    addMorePhotos.addEventListener('click', () => {
+        photoInput.click();
+    });
+
+    // 處理檔案
     function handleFiles(files) {
         const validFiles = Array.from(files).filter(file => {
-            const isValid = validateFile(file);
-            if (!isValid) {
-                showNotification('檔案 ' + file.name + ' 不符合上傳要求', 'error');
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            
+            if (!validTypes.includes(file.type)) {
+                showNotification('檔案格式不支援：' + file.name);
+                return false;
             }
-            return isValid;
+            if (file.size > maxSize) {
+                showNotification('檔案超過 5MB 限制：' + file.name);
+                return false;
+            }
+            return true;
         });
 
-        if (validFiles.length === 0) return;
-
-        // 顯示上傳預覽
-        showUploadPreview(validFiles);
-    }
-
-    // 檔案驗證
-    function validateFile(file) {
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        
-        if (!allowedTypes.includes(file.type)) {
-            return false;
+        if (validFiles.length === 0) {
+            showNotification('沒有可用的圖片檔案');
+            return;
         }
-        
-        if (file.size > maxSize) {
-            return false;
-        }
-        
-        return true;
+
+        uploadedFiles = uploadedFiles.concat(validFiles);
+        showUploadPreview();
+        uploadArea.style.display = 'none';
+        previewArea.style.display = 'block';
+        albumForm.style.display = 'block';
     }
 
-    // 顯示通知
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
-    }
-
-    // 顯示上傳預覽
-    function showUploadPreview(files) {
-        const previewContainer = document.getElementById('uploadPreview');
-        const previewList = document.getElementById('previewList');
-        
-        files.forEach(file => {
+    // 顯示預覽
+    function showUploadPreview() {
+        photoPreview.innerHTML = '';
+        uploadedFiles.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = function(e) {
-                const previewItem = document.createElement('div');
-                previewItem.className = 'preview-card';
-                previewItem.innerHTML = `
-                    <img src="${e.target.result}" class="preview-image" alt="${file.name}">
-                    <div class="preview-info">
-                        <div class="preview-name">${file.name}</div>
-                        <div class="preview-size">${formatFileSize(file.size)}</div>
-                        <div class="preview-progress">
-                            <div class="progress-bar"></div>
-                        </div>
+                const div = document.createElement('div');
+                div.className = 'col-md-3';
+                div.innerHTML = `
+                    <div class="preview-item">
+                        <img src="${e.target.result}" class="img-fluid" alt="預覽圖">
+                        <button type="button" class="btn-remove" data-index="${index}">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 `;
-                previewList.appendChild(previewItem);
+                photoPreview.appendChild(div);
+
+                // 綁定刪除按鈕事件
+                div.querySelector('.btn-remove').addEventListener('click', function() {
+                    uploadedFiles.splice(this.dataset.index, 1);
+                    showUploadPreview();
+                    if (uploadedFiles.length === 0) {
+                        uploadArea.style.display = 'block';
+                        previewArea.style.display = 'none';
+                        albumForm.style.display = 'none';
+                    }
+                });
             };
             reader.readAsDataURL(file);
         });
-
-        previewContainer.style.display = 'block';
-        document.getElementById('startUpload').style.display = 'block';
     }
 
-    // 格式化檔案大小
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    // 提交相簿
+    document.getElementById('submitAlbum').addEventListener('click', function() {
+        const title = document.getElementById('albumTitle').value.trim();
+        const description = document.getElementById('albumDescription').value.trim();
+        const eventDate = document.getElementById('eventDate').value;
+        const category = document.getElementById('category').value;
+        const status = document.querySelector('input[name="status"]:checked').value;
+
+        if (!title || !eventDate || !category) {
+            showNotification('請填寫必要欄位');
+            return;
+        }
+
+        if (uploadedFiles.length === 0) {
+            showNotification('請至少上傳一張照片');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('event_date', eventDate);
+        formData.append('category', category);
+        formData.append('status', status);
+
+        uploadedFiles.forEach((file, index) => {
+            formData.append(`photos[${index}]`, file);
+        });
+
+        // 顯示上傳進度
+        const progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar';
+        document.body.appendChild(progressBar);
+
+        fetch('upload_handler.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('相簿建立成功', 'success');
+                setTimeout(() => {
+                    window.location.href = 'gallery.php';
+                }, 1500);
+            } else {
+                throw new Error(data.message || '上傳失敗');
+            }
+        })
+        .catch(error => {
+            showNotification(error.message);
+        })
+        .finally(() => {
+            progressBar.remove();
+        });
+    });
+
+    // 通知函數
+    function showNotification(message, type = 'error') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
 });
 </script>

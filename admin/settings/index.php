@@ -238,7 +238,7 @@ require_once '../includes/header.php';
                                     <label class="form-check-label" for="email_notification">電子郵件通知</label>
                                 </div>
                                 <small class="text-muted">啟用系統電子郵件通知功能</small>
-                            </div>
+                        </div>
                     </div>
 
                         <div class="col-md-6">

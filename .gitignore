@@ -8,6 +8,7 @@ config/installed.php
 # 上傳檔案目錄
 uploads/*
 !uploads/.gitkeep
+!image/.gitkeep
 
 # 備份檔案目錄
 backups/*

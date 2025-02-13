@@ -33,7 +33,7 @@ switch ($current_dir) {
 $nav_items = [
     'home' => [
         'icon' => 'fas fa-home',
-        'title' => '儀表板',
+        'title' => '後臺首頁',
         'url' => 'index.php'
     ],
     'news' => [

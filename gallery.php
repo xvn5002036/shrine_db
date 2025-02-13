@@ -102,141 +102,162 @@ require_once 'templates/header.php';
 
 <div class="page-content">
     <div class="container">
-        <!-- 分類過濾 -->
-        <div class="category-filter mb-4">
-            <div class="d-flex justify-content-center flex-wrap">
-                <a href="gallery.php" class="filter-btn <?php echo empty($category) ? 'active' : ''; ?>">
-                    全部相簿
-                </a>
-                <?php foreach ($categories as $key => $name): ?>
-                    <a href="gallery.php?category=<?php echo $key; ?>" 
-                       class="filter-btn <?php echo $category === $key ? 'active' : ''; ?>">
-                        <?php echo $name; ?>
-                    </a>
-                <?php endforeach; ?>
-            </div>
+        <!-- 內容包裝器 -->
+        <div class="content-wrapper">
+            <!-- 左側邊欄 -->
+            <div class="sidebar">
+                <div class="category-filter">
+                    <h4 class="filter-title">活動分類</h4>
+                    <div class="filter-list">
+                        <a href="gallery.php" class="filter-btn <?php echo empty($category) ? 'active' : ''; ?>">
+                            <i class="fas fa-border-all"></i>
+                            <span>全部相簿</span>
+                            <span class="count"><?php echo $total_records; ?></span>
+                        </a>
+                        <?php foreach ($categories as $key => $name): ?>
+                            <a href="gallery.php?category=<?php echo $key; ?>" 
+                               class="filter-btn <?php echo $category === $key ? 'active' : ''; ?>">
+                                <i class="fas <?php
+                                    switch($key) {
+                                        case 'temple': echo 'fa-gopuram';
+                                        break;
+                                        case 'ceremony': echo 'fa-pray';
+                                        break;
+                                        case 'collection': echo 'fa-archive';
+                                        break;
+                                        case 'festival': echo 'fa-dragon';
+                                        break;
+                                        default: echo 'fa-folder';
+                                    }
+                                ?>"></i>
+                                <span><?php echo $name; ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             </div>
 
-        <!-- 相簿列表 -->
-        <div class="album-grid">
-            <div class="row g-4">
-                <?php if (empty($albums)): ?>
-                    <div class="col-12 text-center">
+            <!-- 主要內容區 -->
+            <div class="main-content">
+                <!-- 相簿列表 -->
+                <div class="album-grid">
+                    <?php if (empty($albums)): ?>
                         <div class="empty-state">
                             <i class="fas fa-images"></i>
                             <h3>暫無相簿</h3>
                             <p>目前還沒有相關的活動相簿</p>
                         </div>
-                    </div>
-                <?php else: ?>
-                    <?php foreach ($albums as $album): ?>
-                        <div class="col-md-6 col-lg-4">
-                            <div class="album-card">
-                                <div class="album-cover">
-                                    <?php if (!empty($album['cover_photo']) && file_exists('uploads/gallery/' . $album['id'] . '/' . $album['cover_photo'])): ?>
-                                        <img src="uploads/gallery/<?php echo $album['id']; ?>/<?php echo htmlspecialchars($album['cover_photo']); ?>"
-                                             alt="<?php echo htmlspecialchars($album['title']); ?>"
-                                             loading="lazy"
-                                             onload="this.parentElement.classList.add('loaded')"
-                                             onerror="this.parentElement.innerHTML='<div class=\'no-cover\'><div class=\'no-cover-icon\'><i class=\'fas fa-images\'></i></div><div class=\'no-cover-text\'>圖片載入失敗</div></div>'">
-                                    <?php else: ?>
-                                        <div class="no-cover">
-                                            <div class="no-cover-icon">
-                                                <i class="fas fa-images"></i>
+                    <?php else: ?>
+                        <div class="masonry-grid">
+                            <?php foreach ($albums as $album): ?>
+                                <div class="masonry-item">
+                                    <div class="album-card">
+                                        <div class="album-cover">
+                                            <?php if (!empty($album['cover_photo']) && file_exists('uploads/gallery/' . $album['id'] . '/' . $album['cover_photo'])): ?>
+                                                <img src="uploads/gallery/<?php echo $album['id']; ?>/<?php echo htmlspecialchars($album['cover_photo']); ?>"
+                                                     alt="<?php echo htmlspecialchars($album['title']); ?>"
+                                                     loading="lazy"
+                                                     onload="this.parentElement.classList.add('loaded')"
+                                                     onerror="this.parentElement.innerHTML='<div class=\'no-cover\'><div class=\'no-cover-icon\'><i class=\'fas fa-images\'></i></div><div class=\'no-cover-text\'>圖片載入失敗</div></div>'">
+                                            <?php else: ?>
+                                                <div class="no-cover">
+                                                    <div class="no-cover-icon">
+                                                        <i class="fas fa-images"></i>
+                                                    </div>
+                                                    <div class="no-cover-text">
+                                                        尚無封面
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="album-details">
+                                            <div class="album-info">
+                                                <h3 class="album-title">
+                                                    <?php echo htmlspecialchars($album['title']); ?>
+                                                </h3>
+                                                <div class="album-meta">
+                                                    <span class="meta-item">
+                                                        <i class="fas fa-calendar-alt"></i>
+                                                        <?php echo date('Y/m/d', strtotime($album['event_date'])); ?>
+                                                    </span>
+                                                    <span class="meta-item">
+                                                        <i class="fas fa-images"></i>
+                                                        <?php echo $album['photo_count']; ?> 張照片
+                                                    </span>
+                                                </div>
+                                                <?php if (!empty($album['description'])): ?>
+                                                    <p class="album-description">
+                                                        <?php echo mb_strimwidth(htmlspecialchars($album['description']), 0, 100, '...'); ?>
+                                                    </p>
+                                                <?php endif; ?>
                                             </div>
-                                            <div class="no-cover-text">
-                                                尚無封面
+                                            <div class="album-actions">
+                                                <a href="gallery_detail.php?id=<?php echo $album['id']; ?>" class="view-album">
+                                                    <span>查看相簿</span>
+                                                    <i class="fas fa-arrow-right"></i>
+                                                </a>
                                             </div>
                                         </div>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="album-overlay"></div>
-                                <div class="album-details">
-                                    <div class="album-info">
-                                        <h3 class="album-title">
-                                            <?php echo htmlspecialchars($album['title']); ?>
-                                </h3>
-                                        <div class="album-meta">
-                                            <span class="meta-item">
-                                                <i class="fas fa-calendar-alt"></i>
-                                                <?php echo date('Y/m/d', strtotime($album['event_date'])); ?>
-                                            </span>
-                                            <span class="meta-item">
-                                                <i class="fas fa-images"></i>
-                                                <?php echo $album['photo_count']; ?> 張照片
-                                            </span>
+                                        <div class="album-category">
+                                            <i class="fas fa-folder"></i> 
+                                            <span><?php echo $categories[$album['category']] ?? '未分類'; ?></span>
                                         </div>
-                                        <?php if (!empty($album['description'])): ?>
-                                            <p class="album-description">
-                                                <?php echo mb_strimwidth(htmlspecialchars($album['description']), 0, 100, '...'); ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="album-actions">
-                                        <a href="gallery_detail.php?id=<?php echo $album['id']; ?>" class="view-album">
-                                            <span>查看相簿</span>
-                                            <i class="fas fa-arrow-right"></i>
-                                        </a>
                                     </div>
                                 </div>
-                                <div class="album-category">
-                                    <i class="fas fa-folder"></i> 
-                                    <span><?php echo $categories[$album['category']] ?? '未分類'; ?></span>
-                                </div>
-                            </div>
+                            <?php endforeach; ?>
                         </div>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <!-- 分頁導航 -->
+                <?php if ($total_pages > 1): ?>
+                    <nav class="pagination-wrapper">
+                        <ul class="pagination justify-content-center">
+                            <?php if ($page > 1): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=<?php echo ($page-1); ?>&category=<?php echo $category; ?>">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+
+                            <?php
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+                            
+                            if ($start_page > 1) {
+                                echo '<li class="page-item"><a class="page-link" href="?page=1&category=' . $category . '">1</a></li>';
+                                if ($start_page > 2) {
+                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
+                            }
+
+                            for ($i = $start_page; $i <= $end_page; $i++) {
+                                echo '<li class="page-item ' . ($i === $page ? 'active' : '') . '">';
+                                echo '<a class="page-link" href="?page=' . $i . '&category=' . $category . '">' . $i . '</a>';
+                                echo '</li>';
+                            }
+
+                            if ($end_page < $total_pages) {
+                                if ($end_page < $total_pages - 1) {
+                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
+                                echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&category=' . $category . '">' . $total_pages . '</a></li>';
+                            }
+                            ?>
+
+                            <?php if ($page < $total_pages): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=<?php echo ($page+1); ?>&category=<?php echo $category; ?>">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    </nav>
                 <?php endif; ?>
             </div>
         </div>
-
-        <!-- 分頁 -->
-        <?php if ($total_pages > 1): ?>
-            <nav class="pagination-wrapper">
-                <ul class="pagination justify-content-center">
-                    <?php if ($page > 1): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="?page=<?php echo ($page-1); ?>&category=<?php echo $category; ?>">
-                                <i class="fas fa-chevron-left"></i>
-                            </a>
-                        </li>
-                    <?php endif; ?>
-
-                    <?php
-                    $start_page = max(1, $page - 2);
-                    $end_page = min($total_pages, $page + 2);
-                    
-                    if ($start_page > 1) {
-                        echo '<li class="page-item"><a class="page-link" href="?page=1&category=' . $category . '">1</a></li>';
-                        if ($start_page > 2) {
-                            echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                        }
-                    }
-
-                    for ($i = $start_page; $i <= $end_page; $i++) {
-                        echo '<li class="page-item ' . ($i === $page ? 'active' : '') . '">';
-                        echo '<a class="page-link" href="?page=' . $i . '&category=' . $category . '">' . $i . '</a>';
-                        echo '</li>';
-                    }
-
-                    if ($end_page < $total_pages) {
-                        if ($end_page < $total_pages - 1) {
-                            echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                        }
-                        echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&category=' . $category . '">' . $total_pages . '</a></li>';
-                    }
-                    ?>
-
-                    <?php if ($page < $total_pages): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="?page=<?php echo ($page+1); ?>&category=<?php echo $category; ?>">
-                                <i class="fas fa-chevron-right"></i>
-                            </a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            </nav>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -244,9 +265,8 @@ require_once 'templates/header.php';
 /* 頁面橫幅 */
 .page-banner {
     background: linear-gradient(45deg, #2c3e50, #3498db);
-    padding: 4rem 0;
-    margin-bottom: 4rem;
-    color: #fff;
+    padding: 5rem 0;
+    margin-bottom: 3rem;
     position: relative;
     overflow: hidden;
 }
@@ -258,428 +278,356 @@ require_once 'templates/header.php';
     left: 0;
     right: 0;
     bottom: 0;
-    background: url('assets/images/pattern.png');
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239ba5ad' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     opacity: 0.1;
-    z-index: 1;
-}
-
-.page-banner .container {
-    position: relative;
-    z-index: 2;
 }
 
 .page-banner h1 {
-    font-size: 3rem;
+    font-size: 3.5rem;
     font-weight: 800;
+    color: #fff;
     margin-bottom: 1rem;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    letter-spacing: -1px;
 }
 
-/* 分類過濾 */
+/* 內容包裝器 */
+.content-wrapper {
+    display: flex;
+    gap: 2.5rem;
+    position: relative;
+    margin-top: -60px;
+    width: 100%;
+}
+
+/* 左側邊欄 */
+.sidebar {
+    width: 300px;
+    flex-shrink: 0;
+}
+
+/* 分類過濾器 */
 .category-filter {
-    padding: 1.5rem 0;
-    margin-bottom: 3rem;
-    background: #fff;
-    border-radius: 15px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.98);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 2rem;
+    backdrop-filter: blur(20px);
+}
+
+.filter-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 1.8rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+    letter-spacing: -0.5px;
 }
 
 .filter-btn {
-    display: inline-block;
-    padding: 1rem 2rem;
-    margin: 0.5rem;
-    border-radius: 50px;
-    color: #2c3e50;
-    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 0.8rem;
+    border-radius: 12px;
+    color: #444;
     text-decoration: none;
     font-weight: 600;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.filter-btn i {
+    font-size: 1.2rem;
+    margin-right: 1rem;
+    color: #3498db;
+    transition: all 0.3s ease;
 }
 
 .filter-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    color: #3498db;
-    border-color: #3498db;
+    background: #fff;
+    transform: translateX(5px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .filter-btn.active {
-    background: #3498db;
+    background: linear-gradient(45deg, #2c3e50, #3498db);
     color: #fff;
-    border-color: #3498db;
+    border: none;
 }
 
-/* 相簿卡片 */
-.album-grid {
-    margin-bottom: 4rem;
+.filter-btn.active i {
+    color: #fff;
+}
+
+/* 瀑布流網格樣式 */
+.masonry-grid {
+    column-count: 3;
+    column-gap: 30px;
+    padding: 0;
+    width: 100%;
+}
+
+@media (max-width: 1400px) {
+    .masonry-grid {
+        column-count: 3;
+    }
+}
+
+@media (max-width: 1200px) {
+    .masonry-grid {
+        column-count: 2;
+        column-gap: 25px;
+    }
+    
+    .content-wrapper {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        margin-bottom: 2rem;
+    }
+    
+    .category-filter {
+        position: relative;
+        top: 0;
+    }
+    
+    .filter-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .filter-btn {
+        flex: 1;
+        min-width: 200px;
+        margin-bottom: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .masonry-grid {
+        column-count: 1;
+        column-gap: 20px;
+    }
+}
+
+.masonry-item {
+    break-inside: avoid;
+    margin-bottom: 30px;
+    display: inline-block;
+    width: 100%;
 }
 
 .album-card {
-    position: relative;
-    height: 400px;
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 0;
+    width: 100%;
+    display: block;
     background: #fff;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .album-card:hover {
-    transform: translateY(-15px) scale(1.02);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
 }
 
-/* 相簿封面 */
 .album-cover {
     position: relative;
-    width: 100%;
-    height: 100%;
-    background: #f8fafc;
+    padding-top: 66%;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: #f8f9fa;
 }
 
 .album-cover img {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    display: block;
-    max-width: 100%;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+    transition: transform 0.5s ease;
 }
 
 .album-card:hover .album-cover img {
-    transform: scale(1.15);
+    transform: scale(1.05);
 }
 
-/* 圖片載入動畫 */
-.album-cover:not(.loaded)::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.1), transparent);
-    animation: loading 1.5s infinite;
-    z-index: 1;
-}
-
-@keyframes loading {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-
-.album-cover.loaded::before {
-    display: none;
-}
-
-/* 無封面樣式 */
-.no-cover {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-    padding: 2rem;
-    text-align: center;
-}
-
-.no-cover-icon {
-    margin-bottom: 1.5rem;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: rgba(52, 152, 219, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.no-cover-icon i {
-    font-size: 3rem;
-    color: #3498db;
-}
-
-.no-cover-text {
-    font-size: 1.2rem;
-    color: #2c3e50;
-    font-weight: 600;
-}
-
-/* 相簿遮罩 */
-.album-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-        to bottom,
-        rgba(0, 0, 0, 0) 0%,
-        rgba(0, 0, 0, 0.5) 50%,
-        rgba(0, 0, 0, 0.85) 100%
-    );
-    opacity: 0;
-    transition: opacity 0.5s ease;
-}
-
-.album-card:hover .album-overlay {
-    opacity: 1;
-}
-
-/* 相簿詳細資訊 */
 .album-details {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 2.5rem;
-    color: #fff;
-    z-index: 2;
-    transform: translateY(30%);
-    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.album-card:hover .album-details {
-    transform: translateY(0);
+    padding: 1.5rem;
+    background: #fff;
 }
 
 .album-title {
-    font-size: 1.8rem;
-    font-weight: 800;
-    margin-bottom: 1.2rem;
-    color: #fff;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    line-height: 1.3;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #2d3436;
+    line-height: 1.4;
 }
 
 .album-meta {
     display: flex;
-    gap: 2rem;
-    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #636e72;
 }
 
 .meta-item {
     display: flex;
     align-items: center;
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.95);
-    font-weight: 500;
+    gap: 0.5rem;
 }
 
 .meta-item i {
-    margin-right: 0.8rem;
-    font-size: 1.2rem;
+    color: #00b894;
 }
 
 .album-description {
-    font-size: 1.1rem;
-    line-height: 1.7;
-    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+    color: #636e72;
     margin-bottom: 1.5rem;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
-/* 相簿操作按鈕 */
+.album-actions {
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    text-align: right;
+}
+
 .view-album {
     display: inline-flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem 2rem;
-    background: rgba(255, 255, 255, 0.2);
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    background: linear-gradient(135deg, #00b894, #00cec9);
     color: #fff;
-    border-radius: 50px;
     text-decoration: none;
+    border-radius: 50px;
     font-weight: 600;
-    backdrop-filter: blur(10px);
-    transition: all 0.4s ease;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
 }
 
 .view-album:hover {
-    background: #fff;
-    color: #2c3e50;
-    transform: translateY(-3px);
-    border-color: #fff;
+    background: linear-gradient(135deg, #00a884, #00b8b8);
+    transform: translateX(5px);
+    color: #fff;
 }
 
-.view-album i {
-    font-size: 1rem;
-    transition: transform 0.4s ease;
-}
-
-.view-album:hover i {
-    transform: translateX(6px);
-}
-
-/* 相簿分類標籤 */
 .album-category {
     position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 0.8rem 1.5rem;
-    background: rgba(255, 255, 255, 0.98);
-    border-radius: 50px;
-    font-size: 1rem;
-    color: #2c3e50;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0.5rem 1rem;
+    border-radius: 30px;
+    font-size: 0.85rem;
     font-weight: 600;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    z-index: 3;
-    transition: all 0.3s ease;
+    color: #00b894;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 2;
 }
 
-.album-category:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
-}
-
-.album-category i {
-    color: #3498db;
-    font-size: 1rem;
-}
-
-/* 空狀態 */
+/* 空狀態樣式 */
 .empty-state {
-    padding: 6rem 0;
     text-align: center;
-    color: #7f8c8d;
-    background: #f8f9fa;
-    border-radius: 20px;
-    margin: 2rem 0;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, #f6f8fb, #f0f3f7);
+    border-radius: 15px;
+    margin: 20px;
 }
 
 .empty-state i {
-    font-size: 5rem;
+    font-size: 4rem;
+    color: #00b894;
     margin-bottom: 1.5rem;
-    color: #3498db;
-    opacity: 0.5;
+    opacity: 0.8;
 }
 
 .empty-state h3 {
-    font-size: 2rem;
+    font-size: 1.8rem;
+    color: #2d3436;
     margin-bottom: 1rem;
-    color: #2c3e50;
     font-weight: 700;
 }
 
-/* 分頁樣式 */
-.pagination-wrapper {
-    margin-top: 4rem;
-    margin-bottom: 3rem;
+.empty-state p {
+    color: #636e72;
+    font-size: 1.1rem;
+    line-height: 1.6;
 }
 
-.pagination .page-link {
-    border: none;
-    padding: 1rem 1.5rem;
-    margin: 0 0.4rem;
-    color: #2c3e50;
-    border-radius: 10px;
-    transition: all 0.3s ease;
-    font-weight: 600;
-}
-
-.pagination .page-link:hover {
-    background: #e9ecef;
-    color: #3498db;
-    transform: translateY(-2px);
-}
-
-.pagination .page-item.active .page-link {
-    background: #3498db;
-    color: #fff;
-    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
-}
-
-.pagination .page-item.disabled .page-link {
-    background: none;
-    color: #bdc3c7;
-}
-
-/* 響應式調整 */
-@media (max-width: 768px) {
-    .page-banner {
-        padding: 3rem 0;
+/* 動畫效果 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
     }
-    
-    .page-banner h1 {
-        font-size: 2.2rem;
-    }
-    
-    .filter-btn {
-        padding: 0.8rem 1.5rem;
-        font-size: 0.95rem;
-    }
-    
-    .album-card {
-        height: 350px;
-    }
-    
-    .album-details {
-        padding: 1.8rem;
-    }
-    
-    .album-title {
-        font-size: 1.5rem;
-        margin-bottom: 1rem;
-    }
-    
-    .album-meta {
-        gap: 1.2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .album-description {
-        font-size: 1rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-    
-    .view-album {
-        padding: 0.8rem 1.5rem;
-    }
-    
-    .album-category {
-        padding: 0.6rem 1.2rem;
-        font-size: 0.9rem;
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-@media (max-width: 576px) {
-    .album-card {
-        height: 300px;
-    }
-    
-    .album-title {
-        font-size: 1.3rem;
-    }
-    
-    .meta-item {
-        font-size: 0.9rem;
-    }
-    
-    .album-description {
-        display: none;
-    }
+.masonry-item {
+    animation: fadeInUp 0.6s ease-out forwards;
+    animation-delay: calc(var(--card-index) * 0.1s);
+}
+
+/* 主要內容區域寬度調整 */
+.main-content {
+    flex: 1;
+    max-width: 100%;
+    width: 100%;
 }
 </style>
 
-<?php require_once 'templates/footer.php'; ?> 
+<!-- 添加 Masonry 相關腳本 -->
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+<script src="https://unpkg.com/imagesloaded@5/imagesloaded.pkgd.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化 Masonry
+    var grid = document.querySelector('.masonry-grid');
+    var masonry = new Masonry(grid, {
+        itemSelector: '.masonry-item',
+        columnWidth: '.masonry-item',
+        percentPosition: true,
+        transitionDuration: '0.3s'
+    });
+
+    // 當圖片載入完成後重新排列
+    imagesLoaded(grid).on('progress', function() {
+        masonry.layout();
+    });
+
+    // 為相簿卡片添加動畫延遲
+    const cards = document.querySelectorAll('.masonry-item');
+    cards.forEach((card, index) => {
+        card.style.setProperty('--card-index', index);
+    });
+});
+</script>
+
+<?php include 'includes/footer.php'; ?> 

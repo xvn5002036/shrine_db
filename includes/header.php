@@ -28,7 +28,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         <div class="container">
             <div class="logo">
                 <a href="index.php">
-                    <img src="assets/images/logo.png" alt="<?php echo SITE_NAME; ?>">
+                    <img src="image/logo.png" alt="<?php echo SITE_NAME; ?>">
                 </a>
             </div>
             <div class="header-search">

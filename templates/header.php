@@ -70,7 +70,7 @@
             <div class="container">
                 <div class="logo">
                     <a href="<?php echo isset($current_page) ? '../' : ''; ?>index.php">
-                        <img src="<?php echo isset($current_page) ? '../' : ''; ?>assets/images/logo.png" 
+                        <img src="<?php echo isset($current_page) ? '../' : ''; ?>image/logo.png" 
                              alt="<?php echo SITE_NAME; ?>">
                     </a>
                 </div>

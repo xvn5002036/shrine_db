@@ -27,13 +27,13 @@ try {
     }
 
     // 獲取相簿中的所有照片
-    $stmt = $pdo->prepare("SELECT file_name FROM gallery_photos WHERE album_id = ?");
+    $stmt = $pdo->prepare("SELECT filename FROM gallery_photos WHERE album_id = ?");
     $stmt->execute([$id]);
     $photos = $stmt->fetchAll();
 
     // 刪除所有照片檔案
     foreach ($photos as $photo) {
-        $file_path = $root_path . '/uploads/gallery/' . $id . '/' . $photo['file_name'];
+        $file_path = $root_path . '/uploads/gallery/' . $id . '/' . $photo['filename'];
         if (file_exists($file_path)) {
             unlink($file_path);
         }
