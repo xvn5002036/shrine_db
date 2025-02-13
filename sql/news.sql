@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `news` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `category_id` int(11) DEFAULT NULL,
     `title` varchar(255) NOT NULL,
+    `slug` varchar(255) NOT NULL,
     `content` text NOT NULL,
     `image` varchar(255) DEFAULT NULL,
     `status` enum('draft','published','archived') NOT NULL DEFAULT 'draft',
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `news` (
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_slug` (`slug`),
     KEY `idx_category_id` (`category_id`),
     KEY `idx_created_by` (`created_by`),
     KEY `idx_status` (`status`),
@@ -46,9 +48,14 @@ INSERT INTO `news_categories` (`name`, `slug`, `description`, `status`, `sort_or
 ('宮廟文化', 'culture', '宮廟文化與傳統習俗介紹', 'active', 4);
 
 -- 插入測試新聞
-INSERT INTO `news` (`category_id`, `title`, `content`, `status`, `created_at`) VALUES
-(1, '農曆新年開放時間公告', '農曆新年期間（除夕至初五）本宮將24小時開放，方便信眾參拜。\n初一至初五將有特別祈福法會，歡迎參加。', 'published', NOW()),
-(2, '2024年春季祈福法會', '2024年春季祈福法會將於3月份舉行，活動內容包括：\n1. 集體祈福\n2. 安太歲\n3. 點光明燈\n請信眾踴躍參加。', 'published', NOW()),
-(3, '清明節祭祖服務開放預約', '本宮清明節祭祖服務已開放預約，提供以下服務：\n1. 祖先牌位安奉\n2. 清明祭祀\n3. 祖先超渡\n詳情請洽詢服務台。', 'published', NOW());
+INSERT INTO `news` (`category_id`, `title`, `slug`, `content`, `status`, `created_at`) VALUES
+(1, '農曆新年開放時間公告', 'lunar-new-year-opening-hours', '農曆新年期間（除夕至初五）本宮將24小時開放，方便信眾參拜。\n初一至初五將有特別祈福法會，歡迎參加。', 'published', NOW()),
+(2, '2024年春季祈福法會', 'spring-blessing-ceremony-2024', '2024年春季祈福法會將於3月份舉行，活動內容包括：\n1. 集體祈福\n2. 安太歲\n3. 點光明燈\n請信眾踴躍參加。', 'published', NOW()),
+(3, '清明節祭祖服務開放預約', 'qingming-festival-service-booking', '本宮清明節祭祖服務已開放預約，提供以下服務：\n1. 祖先牌位安奉\n2. 清明祭祀\n3. 祖先超渡\n詳情請洽詢服務台。', 'published', NOW());
+
+-- 為現有的新聞記錄生成 slug
+UPDATE news 
+SET slug = CONCAT('news-', id) 
+WHERE slug = '' OR slug IS NULL;
 
 SET FOREIGN_KEY_CHECKS = 1; 
