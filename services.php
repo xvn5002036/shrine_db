@@ -118,7 +118,7 @@ require_once 'templates/header.php';
     </div>
 </main>
 
-<?php include 'includes/footer.php'; ?>
+<?php include 'templates/footer.php'; ?>
 
 <style>
 .services-container {

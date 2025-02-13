@@ -22,5 +22,5 @@ if (!in_array($page, $validPages)) {
 // 載入頁面
 include 'templates/header.php';
 include 'pages/' . $page . '.php';
-include 'includes/footer.php'; 
+include 'templates/footer.php'; 
 

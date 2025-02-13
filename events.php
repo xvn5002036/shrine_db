@@ -510,7 +510,7 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
     </main>
 
-    <?php include 'includes/footer.php'; ?>
+    <?php include 'templates/footer.php'; ?>
 <script src="assets/js/main.js"></script>
 </body>
 </html>

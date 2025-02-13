@@ -208,6 +208,6 @@ try {
         </div>
     </div>
 
-    <?php include 'includes/footer.php'; ?>
+    <?php include 'templates/footer.php'; ?>
 </body>
 </html> 

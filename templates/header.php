@@ -27,45 +27,6 @@
     }
     ?>
     <header class="site-header">
-        <div class="header-top">
-            <div class="container">
-                <div class="contact-info">
-                    <?php if (!empty($settings['contact_phone'])): ?>
-                        <span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($settings['contact_phone']); ?></span>
-                    <?php endif; ?>
-                    <?php if (!empty($settings['contact_hours'])): ?>
-                        <span><i class="fas fa-clock"></i> <?php echo htmlspecialchars($settings['contact_hours']); ?></span>
-                    <?php endif; ?>
-                </div>
-                <div class="admin-link">
-                    <a href="<?php echo isset($current_page) ? '../' : ''; ?>admin/login.php">
-                        <i class="fas fa-user-lock"></i> 後台管理
-                    </a>
-                </div>
-                <div class="social-links">
-                    <?php if (!empty($settings['social_facebook'])): ?>
-                        <a href="<?php echo htmlspecialchars($settings['social_facebook']); ?>" target="_blank">
-                            <i class="fab fa-facebook"></i>
-                        </a>
-                    <?php endif; ?>
-                    <?php if (!empty($settings['social_instagram'])): ?>
-                        <a href="<?php echo htmlspecialchars($settings['social_instagram']); ?>" target="_blank">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                    <?php endif; ?>
-                    <?php if (!empty($settings['social_line'])): ?>
-                        <a href="<?php echo htmlspecialchars($settings['social_line']); ?>" target="_blank">
-                            <i class="fab fa-line"></i>
-                        </a>
-                    <?php endif; ?>
-                    <?php if (!empty($settings['social_youtube'])): ?>
-                        <a href="<?php echo htmlspecialchars($settings['social_youtube']); ?>" target="_blank">
-                            <i class="fab fa-youtube"></i>
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
         <div class="header-main">
             <div class="container">
                 <div class="logo">
@@ -86,6 +47,9 @@
                     </a>
                     <a href="<?php echo isset($current_page) ? '../' : ''; ?>contact.php" class="action-btn contact-btn">
                         <i class="fas fa-envelope"></i> 聯絡我們
+                    </a>
+                    <a href="<?php echo isset($current_page) ? '../' : ''; ?>admin/login.php" class="action-btn admin-btn">
+                        <i class="fas fa-user-lock"></i> 後台管理
                     </a>
                 </div>
             </div>

@@ -414,4 +414,4 @@ window.addEventListener('load', function() {
 }
 </style>
 
-<?php include 'includes/footer.php'; ?> 
+<?php include 'templates/footer.php'; ?> 

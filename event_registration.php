@@ -268,4 +268,4 @@ require_once 'templates/header.php';
 }
 </style>
 
-<?php include 'includes/footer.php'; ?> 
+<?php include 'templates/footer.php'; ?> 

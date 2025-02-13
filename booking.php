@@ -334,7 +334,7 @@ try {
         </div>
     </div>
 
-    <?php include 'includes/footer.php'; ?>
+    <?php include 'templates/footer.php'; ?>
 
     <script>
         // 表單驗證

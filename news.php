@@ -254,6 +254,6 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in']) {
         </div>
     </div>
 
-    <?php include 'includes/footer.php'; ?>
+    <?php include 'templates/footer.php'; ?>
 </body>
 </html> 

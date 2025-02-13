@@ -525,4 +525,4 @@ button:hover {
 })()
 </script>
 
-<?php include 'includes/footer.php'; ?> 
+<?php include 'templates/footer.php'; ?> 

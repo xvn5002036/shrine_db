@@ -184,7 +184,7 @@ include 'templates/header.php';
     </div>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php include 'templates/footer.php'; ?>
 
 <!-- 表單驗證 JavaScript -->
 <script>
