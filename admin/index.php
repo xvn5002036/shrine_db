@@ -384,7 +384,12 @@ $system_info = [
         }
 
         /* 響應式設計 */
-        @media (max-width: 1200px) {
+        @media (max-width: 1024px) {
+            .admin-main {
+                margin-left: 0;
+                width: 100%;
+            }
+            
             .dashboard-sections {
                 grid-template-columns: 1fr;
             }
@@ -404,15 +409,7 @@ $system_info = [
             }
 
             .stat-cards {
-                grid-template-columns: 1fr;
-            }
-
-            .quick-actions {
-                grid-template-columns: 1fr;
-            }
-
-            .content {
-                padding: 0 10px;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             }
         }
     </style>

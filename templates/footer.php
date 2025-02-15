@@ -114,16 +114,10 @@ $current_year = date('Y');
                     </div>
                     <div class="newsletter">
                         <h4>訂閱電子報</h4>
-                        <form id="newsletter-form" class="newsletter-form">
+                        <form action="subscribe.php" method="post" class="newsletter-form">
                             <input type="email" name="email" placeholder="請輸入您的 Email" required>
                             <button type="submit"><i class="fas fa-paper-plane"></i></button>
                         </form>
-                        <div id="newsletter-message" class="newsletter-message"></div>
-                        <div class="newsletter-unsubscribe">
-                            <a href="unsubscribe.php" class="unsubscribe-link">
-                                <i class="fas fa-times-circle"></i> 取消訂閱電子報
-                            </a>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -152,75 +146,5 @@ $current_year = date('Y');
 
 <!-- 引入 Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-<style>
-.newsletter-unsubscribe {
-    margin-top: 10px;
-    text-align: center;
-}
-
-.unsubscribe-link {
-    color: #666;
-    font-size: 0.9em;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.unsubscribe-link:hover {
-    color: #dc3545;
-}
-
-.newsletter-message {
-    margin-top: 10px;
-    font-size: 0.9em;
-}
-
-.newsletter-message.success {
-    color: #28a745;
-}
-
-.newsletter-message.error {
-    color: #dc3545;
-}
-</style>
-
-<script>
-document.getElementById('newsletter-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const form = this;
-    const messageDiv = document.getElementById('newsletter-message');
-    const email = form.email.value;
-    
-    // 清除之前的訊息
-    messageDiv.textContent = '';
-    messageDiv.className = 'newsletter-message';
-    
-    // 發送 AJAX 請求
-    fetch('subscribe.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'email=' + encodeURIComponent(email)
-    })
-    .then(response => response.json())
-    .then(data => {
-        messageDiv.textContent = data.message;
-        messageDiv.className = 'newsletter-message ' + (data.success ? 'success' : 'error');
-        
-        if (data.success) {
-            form.reset();
-        }
-    })
-    .catch(error => {
-        messageDiv.textContent = '訂閱處理時發生錯誤，請稍後再試';
-        messageDiv.className = 'newsletter-message error';
-        console.error('Error:', error);
-    });
-});
-</script>
 </body>
 </html> 

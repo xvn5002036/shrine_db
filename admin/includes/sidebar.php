@@ -61,11 +61,6 @@ $nav_items = [
         'title' => '用戶管理',
         'url' => 'users/index.php'
     ],
-    'newsletter' => [
-        'icon' => 'fas fa-envelope',
-        'title' => '電子報管理',
-        'url' => 'newsletter/index.php'
-    ],
     'settings' => [
         'icon' => 'fas fa-cog',
         'title' => '系統設定',
@@ -90,8 +85,6 @@ function isCurrentPage($nav_key) {
             return $current_dir === 'blessings';
         case 'users':
             return $current_dir === 'users';
-        case 'newsletter':
-            return $current_dir === 'newsletter';
         case 'settings':
             return $current_dir === 'settings';
         default:
@@ -134,7 +127,7 @@ function getAdminUrl($path) {
     <nav class="sidebar-nav">
         <ul class="nav-list">
             <li class="nav-item">
-                <a href="../index.php" class="nav-link">
+                <a href="/" class="nav-link">
                     <i class="fas fa-external-link-alt"></i>
                     <span>前台首頁</span>
                 </a>
