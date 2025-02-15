@@ -137,14 +137,14 @@ $system_info = [
         .admin-container {
             display: flex;
             min-height: 100vh;
-            padding-left: 250px; /* 側邊欄寬度 */
         }
 
         .admin-main {
             flex: 1;
             padding: 80px 20px 20px 20px; /* 上方增加 padding 避免被頂部欄遮蓋 */
             min-height: 100vh;
-            width: 100%;
+            width: calc(100% - 250px);
+            margin-left: 250px;
             box-sizing: border-box;
             position: relative;
             background-color: #f4f6f9;
